@@ -153,20 +153,22 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 		if self.model_id is 1:
 			ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
-			gp = GPy.models.GPRegression(X_train,y_train,ker)
+			gp_load = GPy.models.GPRegression(X_train,y_train,ker)
 			gp_load.update_model(False)
 			gp_load.initialize_parameter()
+			fname = self.path + '/gp_params'
 			try:
 				gp_load[:] = np.load('%s_gp_params.npy'%(fname))
 			except FileNotFoundError:
 				print('Training Model for the first time')
 			gp_load.update_model(True)
-			y_pred = gp.predict(X_test)[0]
+			gp_load.optimize_restarts(messages = False, num_restarts = 2)
+			y_pred = gp_load.predict(X_test)[0]
 
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
 			r2 = r2_score(y_test.ravel(), y_pred.ravel())
-			fname = self.path + '/gp_params'
-			np.save('%s_gp_params.npy' % (fname), gp.param_array)
+			
+			np.save('%s_gp_params.npy' % (fname), gp_load.param_array)
 			print("After Training: MSE = ",mse," R sqaured score = ",r2)
 
 	def predict(self, X_load):
@@ -178,7 +180,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			gp_load.initialize_parameter()
 			gp_load[:] = np.load('%s_gp_params.npy'%(fname))
 			gp_load.update_model(True)
-			return gp.predict(X_load)[0].ravel()[0]
+			return gp_load.predict(X_load)[0].ravel()[0]
 
 
 class ptReplica(multiprocessing.Process):
@@ -287,7 +289,6 @@ class ptReplica(multiprocessing.Process):
 		[likelihood, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w)
 		[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w)
 		#Beginning Sampling using MCMC RANDOMWALK
-		fig = plt.figure()
 		accept_list = open(self.path+'/acceptlist_'+str(self.temperature)+'.txt', "a+")
 		trainacc = 0
 		testacc=0
@@ -300,7 +301,7 @@ class ptReplica(multiprocessing.Process):
 
 			#Surrogate or Likelihood Function randomly chosen to get likelihood for accepting/rejecting the proposals
 			kappa = random.uniform(0,1)
-			if kappa<0.5 or i<self.surrogate_interval:
+			if kappa<0.5 or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
 			else:
@@ -308,7 +309,7 @@ class ptReplica(multiprocessing.Process):
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
-				likelihood_proposal = surrogate_model.predict(w_proposal)
+				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(w_proposal.shape[0],1))
 
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
@@ -350,7 +351,7 @@ class ptReplica(multiprocessing.Process):
 				acc_train[i+1,] = acc_train[i,]
 				acc_test[i+1,] = acc_test[i,]
 			#SWAPPING PREP
-			if (i%self.swap_interval == 0):
+			if (i%self.swap_interval == 0) and (i!=0):
 				param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature]),np.asarray([i])])
 				self.parameter_queue.put(param)
 				self.signal_main.set()
@@ -365,7 +366,7 @@ class ptReplica(multiprocessing.Process):
 					except:
 						print ('error')
 			#SURROGATE TRAINING
-			if (i%self.surrogate_interval == 0):
+			if (i%self.surrogate_interval == 0) and (i!=0):
 				#Train the surrogate with the posteriors and likelihood
 				param = np.concatenate([pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
 				self.surrogate_parameterqueue.put(param)
@@ -579,8 +580,10 @@ class ParallelTempering:
 			return
 
 	def surrogate_trainer(self,params):
-		X = params[:,:self.num_param].T.reshape(-1)
-		Y = params[:,self.num_param].T.reshape(-1)
+		X = params[:,:self.num_param]
+		print(X.shape)
+		Y = params[:,self.num_param].reshape(X.shape[0],1)
+		print(Y.shape)
 		surrogate_model = surrogate("gp",X,Y,self.path)
 		surrogate_model.train()
 		
@@ -694,9 +697,8 @@ class ParallelTempering:
 						self.surrogate_start_events[k].wait()
 					for k in range(0,self.num_chains):
 						params = self.surrogate_parameterqueues[k].get()
-						print(params.shape)
-						print(k if not ('all_param' in locals()) else all_param.shape)
-						all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=1))
+						all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
+					print(all_param.shape)
 					self.surrogate_trainer(all_param)
 					for k in range(self.num_chains):
 						self.surrogate_resume_events[k].set()
@@ -854,10 +856,10 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 20000
+		NumSample = 200
 		maxtemp = 20 
 		swap_ratio = 0.125
-		num_chains = 10
+		num_chains = 4 
 		burn_in = 0.2
 		surrogate_interval = int(swap_ratio * (NumSample/num_chains))
 
