@@ -18,9 +18,12 @@ from matplotlib.collections import PatchCollection
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 import GPy
+import sklearn
+from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import normalize
+import pickle
 #np.random.seed(1)
 
 class Network:
@@ -146,7 +149,10 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		if model=="gp":
 			self.model_id = 1
 		else:
-			print("Invalid Model!")
+			if model == "nn":
+				self.model_id = 2
+			else:
+				print("Invalid Model!")
 
 	def train(self):
 		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
@@ -170,6 +176,18 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			
 			np.save('%s_gp_params.npy' % (fname), gp_load.param_array)
 			print("After Training: MSE = ",mse," R sqaured score = ",r2)
+		if self.model_id is 2:
+			#Neural Network for prediction
+			try:
+				net= pickle.load(open(self.path+'/nn_params.pckl','rb'))
+			except FileNotFoundError:
+				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.001)
+			net.fit(X_train,y_train.ravel())
+			y_pred = net.predict(X_test)
+			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
+			r2 = r2_score(y_test.ravel(), y_pred.ravel())
+			pickle.dump(net, open(self.path+'/nn_params.pckl','wb'))
+			print("After Training: MSE = ",mse," R sqaured score = ",r2)
 
 	def predict(self, X_load):
 		if self.model_id == 1:
@@ -181,6 +199,10 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			gp_load[:] = np.load('%s_gp_params.npy'%(fname))
 			gp_load.update_model(True)
 			return gp_load.predict(X_load)[0].ravel()[0]
+		if self.model_id == 2:
+			net= pickle.load(open(self.path+'/nn_params.pckl','rb'))
+			return net.predict(X_load)[0]
+
 
 
 class ptReplica(multiprocessing.Process):
@@ -293,7 +315,7 @@ class ptReplica(multiprocessing.Process):
 		trainacc = 0
 		testacc=0
 		#Surrogate Init
-		surrogate_model = surrogate("gp",pos_w,lhood_list,self.path)
+		surrogate_model = surrogate("nn",pos_w,lhood_list,self.path)
 
 		for i in range(samples-1):
 			#GENERATING SAMPLE
@@ -301,6 +323,7 @@ class ptReplica(multiprocessing.Process):
 
 			#Surrogate or Likelihood Function randomly chosen to get likelihood for accepting/rejecting the proposals
 			kappa = random.uniform(0,1)
+			timer1 = time.time()
 			if kappa<0.5 or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
@@ -310,7 +333,7 @@ class ptReplica(multiprocessing.Process):
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
 				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
-
+			print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
 			diff_likelihood = likelihood_proposal - likelihood
@@ -351,7 +374,7 @@ class ptReplica(multiprocessing.Process):
 				acc_train[i+1,] = acc_train[i,]
 				acc_test[i+1,] = acc_test[i,]
 			#SWAPPING PREP
-			if (i%self.swap_interval == 0) and (i!=0):
+			if i%self.swap_interval == 0:
 				param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature]),np.asarray([i])])
 				self.parameter_queue.put(param)
 				self.signal_main.set()
@@ -377,6 +400,8 @@ class ptReplica(multiprocessing.Process):
 		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature]),np.asarray([i])])
 		#print('SWAPPED PARAM',self.temperature,param)
 		self.parameter_queue.put(param)
+		param = np.concatenate([pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
+		self.surrogate_parameterqueue.put(param)
 		make_directory(self.path+'/results')
 		make_directory(self.path+'/posterior')
 		print ((naccept*100 / (samples * 1.0)), '% was accepted')
@@ -406,6 +431,7 @@ class ptReplica(multiprocessing.Process):
 		np.savetxt(file_name, [accept_ratio], fmt='%1.2f')
 
 		self.signal_main.set()
+		self.surrogate_start.set()
 
 class ParallelTempering:
 
@@ -584,7 +610,7 @@ class ParallelTempering:
 		print(X.shape)
 		Y = params[:,self.num_param].reshape(X.shape[0],1)
 		print(Y.shape)
-		surrogate_model = surrogate("gp",X,Y,self.path)
+		surrogate_model = surrogate("nn",X,Y,self.path)
 		surrogate_model.train()
 		
 	def plot_figure(self, list, title): 
@@ -691,8 +717,7 @@ class ParallelTempering:
 					self.event[k].set()
 			count = 0
 			# Surrogate's Events:
-			if ('param1' in locals()):
-				if (param1[self.num_param+3]%self.surrogate_interval == 0):
+			if (param1[self.num_param+3]%self.surrogate_interval == 0):
 					for k in range(0,self.num_chains):
 						self.surrogate_start_events[k].wait()
 					for k in range(0,self.num_chains):
@@ -702,14 +727,11 @@ class ParallelTempering:
 					self.surrogate_trainer(all_param)
 					for k in range(self.num_chains):
 						self.surrogate_resume_events[k].set()
-			else:
-				for k in range(0,self.num_chains):
-					self.surrogate_start_events[k].wait()
-					self.surrogate_resume_events[k].set()
 			######################
 			for i in range(self.num_chains):
 				if self.chains[i].is_alive() is False:
 					count+=1
+			print("COUNTERRRRRRRR",count)
 			if count == self.num_chains  :
 				#print(count)
 				break
@@ -782,7 +804,7 @@ def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
 	for i in range(1):
-		problem = 4
+		problem = 2
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -856,15 +878,17 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 200
+		NumSample = 20000
 		maxtemp = 20 
 		swap_ratio = 0.125
-		num_chains = 4 
+		num_chains = 10
+		swap_interval =  int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = int(swap_ratio * (NumSample/num_chains))
+		surrogate_interval = 1000
 
 		###############################
-
+		if surrogate_interval < swap_interval:
+			surrogate_interval = swap_interval
 		#Separating data to train and test
 		if separate_flag is True:
 			#Normalizing Data
@@ -877,7 +901,7 @@ def main():
 			traindata = np.hstack([features[indices[:np.int(train_ratio*features.shape[0])],:],classes[indices[:np.int(train_ratio*features.shape[0])],:]])
 			testdata = np.hstack([features[indices[np.int(train_ratio*features.shape[0])]:,:],classes[indices[np.int(train_ratio*features.shape[0])]:,:]])
 
-		swap_interval =  int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
+		
 		timer = time.time()
 		path = "RESULTS/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)
 		make_directory(path)
