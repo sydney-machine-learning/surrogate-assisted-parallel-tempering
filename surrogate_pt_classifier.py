@@ -309,7 +309,7 @@ class ptReplica(multiprocessing.Process):
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
-				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(w_proposal.shape[0],1))
+				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
 
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
@@ -374,7 +374,7 @@ class ptReplica(multiprocessing.Process):
 				self.surrogate_resume.wait()
 
 
-		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature])])
+		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature]),np.asarray([i])])
 		#print('SWAPPED PARAM',self.temperature,param)
 		self.parameter_queue.put(param)
 		make_directory(self.path+'/results')
