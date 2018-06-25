@@ -859,7 +859,7 @@ def main():
 			hidden = 50
 			ip = 20 #input
 			output = 2
-		if problem == 7:
+		if problem == 7: #PenDigit
 			traindata = np.genfromtxt('DATA/PenDigit/train.csv',delimiter=',')
 			testdata = np.genfromtxt('DATA/PenDigit/test.csv',delimiter=',')
 			name = "PenDigit"
