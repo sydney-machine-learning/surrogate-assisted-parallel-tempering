@@ -181,7 +181,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			try:
 				net= pickle.load(open(self.path+'/nn_params.pckl','rb'))
 			except FileNotFoundError:
-				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.001)
+				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.05)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
@@ -333,7 +333,7 @@ class ptReplica(multiprocessing.Process):
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
 				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
-			print(self.temperature, time.time() - timer1)
+			#print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
 			diff_likelihood = likelihood_proposal - likelihood
@@ -352,7 +352,7 @@ class ptReplica(multiprocessing.Process):
 				likelihood = likelihood_proposal
 				prior_current = prior_prop
 				w = w_proposal
-				print (i,'accepted')
+				#print (i,'accepted')
 				accept_list.write('{} {} {} {} {} {} {}\n'.format(self.temperature,naccept, i, rmsetrain, rmsetest, diff_likelihood, diff_likelihood + diff_prior))
 				pos_w[i + 1,] = w_proposal
 				lhood_list[i+1,] = likelihood
@@ -804,7 +804,7 @@ def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
 	for i in range(1):
-		problem = 2
+		problem = 6
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -884,7 +884,7 @@ def main():
 		num_chains = 10
 		swap_interval =  int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 1000
+		surrogate_interval = 100
 
 		###############################
 		if surrogate_interval < swap_interval:
