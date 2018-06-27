@@ -143,8 +143,10 @@ class Network:
 class surrogate: #General Class for surrogate models for predicting likelihood given the weights
 	
 	def __init__(self, model, X, Y, path):
-		self.X = X
-		self.Y = Y
+		
+
+		self.X, self.mean_X, self.std_X = self.normalize(X)
+		self.Y, self.mean_Y, self.std_Y = self.normalize(Y)
 		self.path = path
 		if model=="gp":
 			self.model_id = 1
@@ -153,6 +155,15 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 				self.model_id = 2
 			else:
 				print("Invalid Model!")
+
+	def normalize(self, X):
+		mean_X = np.zeros((1,X.shape[1]))
+		std_X = np.ones((1,X.shape[1]))
+		for i in range(X.shape[1]):
+			mean_X[:,i] = np.mean(X[:,i])
+			std_X[:,i] = np.std(X[:,i])
+			X[:,i] = (X[:,i] - mean_X[0,i])/(std_X[0,i] if std_X[0,i] is 0 else 1)
+		return X, mean_X, std_X
 
 	def train(self):
 		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
@@ -179,15 +190,15 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		if self.model_id is 2:
 			#Neural Network for prediction
 			try:
-				net= pickle.load(open(self.path+'/nn_params.pckl','rb'))
+				[net, _, _]= pickle.load(open(self.path+'/nn_params.pckl','rb'))
 			except FileNotFoundError:
-				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.05)
+				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.05, max_iter = 500)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
 			r2 = r2_score(y_test.ravel(), y_pred.ravel())
-			pickle.dump(net, open(self.path+'/nn_params.pckl','wb'))
-			print("After Training: MSE = ",mse," R sqaured score = ",r2)
+			pickle.dump([net, self.mean_Y, self.std_Y], open(self.path+'/nn_params.pckl','wb'))
+			print("After Training: MSE = ",mse," R squared score = ",r2)
 
 	def predict(self, X_load):
 		if self.model_id == 1:
@@ -200,8 +211,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			gp_load.update_model(True)
 			return gp_load.predict(X_load)[0].ravel()[0]
 		if self.model_id == 2:
-			net= pickle.load(open(self.path+'/nn_params.pckl','rb'))
-			return net.predict(X_load)[0]
+			[net, self.mean_Y, self.std_Y]= pickle.load(open(self.path+'/nn_params.pckl','rb'))
+			return (net.predict(X_load)[0])
 
 
 
@@ -324,15 +335,19 @@ class ptReplica(multiprocessing.Process):
 			#Surrogate or Likelihood Function randomly chosen to get likelihood for accepting/rejecting the proposals
 			kappa = random.uniform(0,1)
 			timer1 = time.time()
+			is_true_lhood = False
 			if kappa<0.5 or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
+				is_true_lhood =  True
+				print(i, 'true:', likelihood_proposal)
 			else:
 				pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w_proposal)
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
 				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
+				print(i, 'predicted', likelihood_proposal)
 			#print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
@@ -355,7 +370,10 @@ class ptReplica(multiprocessing.Process):
 				#print (i,'accepted')
 				accept_list.write('{} {} {} {} {} {} {}\n'.format(self.temperature,naccept, i, rmsetrain, rmsetest, diff_likelihood, diff_likelihood + diff_prior))
 				pos_w[i + 1,] = w_proposal
-				lhood_list[i+1,] = likelihood*self.temperature
+				if is_true_lhood == True:
+					lhood_list[i+1,] = likelihood*self.temperature
+				else:
+					lhood_list[i+1,] = np.mean(lhood_list[:i,]) 
 				fxtrain_samples[i + 1,] = pred_train
 				fxtest_samples[i + 1,] = pred_test
 				rmse_train[i + 1,] = rmsetrain
@@ -727,6 +745,7 @@ class ParallelTempering:
 					self.surrogate_trainer(all_param)
 					for k in range(self.num_chains):
 						self.surrogate_resume_events[k].set()
+					del all_param
 			######################
 			for i in range(self.num_chains):
 				if self.chains[i].is_alive() is False:
@@ -803,7 +822,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [2,3,4,6,7]:
+	for i in [7]:
 		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -882,7 +901,7 @@ def main():
 		maxtemp = 20 
 		swap_ratio = 0.125
 		num_chains = 10
-		swap_interval =  int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
+		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
 		surrogate_interval = 750
 
