@@ -144,7 +144,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 	
 	def __init__(self, model, X, Y, path):
 		
-
+		#print(X)
 		self.X, self.mean_X, self.std_X = self.normalize(X)
 		self.Y, self.mean_Y, self.std_Y = self.normalize(Y)
 		self.path = path
@@ -157,15 +157,16 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 				print("Invalid Model!")
 
 	def normalize(self, X):
-		mean_X = np.zeros((1,X.shape[1]))
-		std_X = np.ones((1,X.shape[1]))
+		maxer = np.zeros((1,X.shape[1]))
+		miner = np.ones((1,X.shape[1]))
 		for i in range(X.shape[1]):
-			mean_X[:,i] = np.mean(X[:,i])
-			std_X[:,i] = np.std(X[:,i])
-			X[:,i] = (X[:,i] - mean_X[0,i])/(std_X[0,i] if std_X[0,i] is 0 else 1)
-		return X, mean_X, std_X
+			maxer[0,i] = max(X[:,i])
+			miner[0,i] = min(X[:,i])
+			X[:,i] = (X[:,i] - min(X[:,i]))/(max(X[:,i]) - min(X[:,i]) if (max(X[:,i]) - min(X[:,i])) is 0 else 1)
+		return X, maxer, miner
 
 	def train(self):
+		print(self.mean_Y, self.std_Y)
 		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
 
 		if self.model_id is 1:
@@ -212,7 +213,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			return gp_load.predict(X_load)[0].ravel()[0]
 		if self.model_id == 2:
 			[net, self.mean_Y, self.std_Y]= pickle.load(open(self.path+'/nn_params.pckl','rb'))
-			return (net.predict(X_load)[0])
+			#print(net.predict(X_load)[0])
+			return (net.predict(X_load)[0]*(self.mean_Y[0,0]-self.std_Y[0,0]) + self.std_Y[0,0])
 
 
 
@@ -326,7 +328,7 @@ class ptReplica(multiprocessing.Process):
 		trainacc = 0
 		testacc=0
 		#Surrogate Init
-		surrogate_model = surrogate("nn",pos_w,lhood_list,self.path)
+		surrogate_model = surrogate("nn",pos_w.copy(),lhood_list.copy(),self.path)
 
 		for i in range(samples-1):
 			#GENERATING SAMPLE
@@ -340,14 +342,14 @@ class ptReplica(multiprocessing.Process):
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
 				is_true_lhood =  True
-				print(i, 'true:', likelihood_proposal)
+				#print(i, 'true:', likelihood_proposal)
 			else:
 				pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w_proposal)
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
 				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
-				print(i, 'predicted', likelihood_proposal)
+				#print(i, 'predicted', likelihood_proposal)
 			#print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
@@ -823,7 +825,7 @@ def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
 	for i in [7]:
-		problem = i
+		problem = 2
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -903,7 +905,7 @@ def main():
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 750
+		surrogate_interval = 250
 
 		###############################
 		if surrogate_interval < swap_interval:
