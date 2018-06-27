@@ -332,7 +332,7 @@ class ptReplica(multiprocessing.Process):
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
-				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
+				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
 			#print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			diff_prior = prior_prop - prior_current
@@ -355,7 +355,7 @@ class ptReplica(multiprocessing.Process):
 				#print (i,'accepted')
 				accept_list.write('{} {} {} {} {} {} {}\n'.format(self.temperature,naccept, i, rmsetrain, rmsetest, diff_likelihood, diff_likelihood + diff_prior))
 				pos_w[i + 1,] = w_proposal
-				lhood_list[i+1,] = likelihood
+				lhood_list[i+1,] = likelihood*self.temperature
 				fxtrain_samples[i + 1,] = pred_train
 				fxtest_samples[i + 1,] = pred_test
 				rmse_train[i + 1,] = rmsetrain
@@ -803,8 +803,8 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in range(1):
-		problem = 6
+	for i in [2,3,4,6,7]:
+		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -884,7 +884,7 @@ def main():
 		num_chains = 10
 		swap_interval =  int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 100
+		surrogate_interval = 750
 
 		###############################
 		if surrogate_interval < swap_interval:
@@ -903,7 +903,7 @@ def main():
 
 		
 		timer = time.time()
-		path = "RESULTS/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)
+		path = "RESULTS/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)
 		make_directory(path)
 		print(path)
 		pt = ParallelTempering(traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, path)
