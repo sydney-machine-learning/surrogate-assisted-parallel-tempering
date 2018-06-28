@@ -328,7 +328,7 @@ class ptReplica(multiprocessing.Process):
 		trainacc = 0
 		testacc=0
 		#Surrogate Init
-		surrogate_model = surrogate("nn",pos_w.copy(),lhood_list.copy(),self.path)
+		
 
 		for i in range(samples-1):
 			#GENERATING SAMPLE
@@ -344,6 +344,7 @@ class ptReplica(multiprocessing.Process):
 				is_true_lhood =  True
 				#print(i, 'true:', likelihood_proposal)
 			else:
+				surrogate_model = surrogate("nn",surrogate_X.copy(),surrogate_Y.copy(),self.path)
 				pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w_proposal)
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
@@ -411,6 +412,7 @@ class ptReplica(multiprocessing.Process):
 			#SURROGATE TRAINING
 			if (i%self.surrogate_interval == 0) and (i!=0):
 				#Train the surrogate with the posteriors and likelihood
+				surrogate_X, surrogate_Y = pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]
 				param = np.concatenate([pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
 				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
@@ -825,7 +827,7 @@ def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
 	for i in [7]:
-		problem = 2
+		problem = 7
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -905,7 +907,7 @@ def main():
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 250
+		surrogate_interval = 750
 
 		###############################
 		if surrogate_interval < swap_interval:
