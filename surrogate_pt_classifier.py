@@ -162,13 +162,11 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		for i in range(X.shape[1]):
 			maxer[0,i] = max(X[:,i])
 			miner[0,i] = min(X[:,i])
-			X[:,i] = (X[:,i] - min(X[:,i]))/(max(X[:,i]) - min(X[:,i]) if (max(X[:,i]) - min(X[:,i])) is 0 else 1)
+			X[:,i] = (X[:,i] - min(X[:,i]))/(max(X[:,i]) - min(X[:,i]))
 		return X, maxer, miner
 
 	def train(self):
-		print(self.mean_Y, self.std_Y)
 		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
-
 		if self.model_id is 1:
 			ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
 			gp_load = GPy.models.GPRegression(X_train,y_train,ker)
@@ -193,7 +191,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			try:
 				[net, _, _]= pickle.load(open(self.path+'/nn_params.pckl','rb'))
 			except FileNotFoundError:
-				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.05, max_iter = 500)
+				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.025, max_iter = 1000)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
@@ -289,7 +287,9 @@ class ptReplica(multiprocessing.Process):
 		
 		w_size = (netw[0] * netw[1]) + (netw[1] * netw[2]) + netw[1] + netw[2]  # num of weights and bias
 		pos_w = np.ones((samples, w_size)) #Posterior for all weights
+		s_pos_w = np.ones((samples, w_size)) #Surrogate Trainer
 		lhood_list = np.zeros((samples,1))
+		surrogate_list = np.zeros((samples,1))
 		fxtrain_samples = np.ones((samples, trainsize)) #Output of regression FNN for training samples
 		fxtest_samples = np.ones((samples, testsize)) #Output of regression FNN for testing samples
 		rmse_train  = np.zeros(samples)
@@ -338,18 +338,19 @@ class ptReplica(multiprocessing.Process):
 			kappa = random.uniform(0,1)
 			timer1 = time.time()
 			is_true_lhood = False
-			if kappa<0.5 or i<self.surrogate_interval+1:
+			if kappa<1 or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
 				is_true_lhood =  True
 				#print(i, 'true:', likelihood_proposal)
-			else:
+			if i>self.surrogate_interval+1:#else:
 				surrogate_model = surrogate("nn",surrogate_X.copy(),surrogate_Y.copy(),self.path)
 				pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w_proposal)
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
 				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
+				#surrogate_list[i,] = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
 				#print(i, 'predicted', likelihood_proposal)
 			#print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
@@ -373,6 +374,7 @@ class ptReplica(multiprocessing.Process):
 				#print (i,'accepted')
 				accept_list.write('{} {} {} {} {} {} {}\n'.format(self.temperature,naccept, i, rmsetrain, rmsetest, diff_likelihood, diff_likelihood + diff_prior))
 				pos_w[i + 1,] = w_proposal
+				s_pos_w[i+1,] = w_proposal
 				if is_true_lhood == True:
 					lhood_list[i+1,] = likelihood*self.temperature
 				else:
@@ -386,8 +388,9 @@ class ptReplica(multiprocessing.Process):
 				
 			else:
 				accept_list.write('{} x {} {} {} {} {}\n'.format(self.temperature, i, rmsetrain, rmsetest, likelihood, diff_likelihood + diff_prior))
-				pos_w[i + 1,] = pos_w[i,]
-				lhood_list[i+1,] = lhood_list[i,]
+				pos_w[i+1,] = pos_w[i,]
+				s_pos_w[i + 1,] = w_proposal
+				lhood_list[i+1,] = likelihood_proposal*self.temperature#lhood_list[i,]
 				fxtrain_samples[i + 1,] = fxtrain_samples[i,]
 				fxtest_samples[i + 1,] = fxtest_samples[i,]
 				rmse_train[i + 1,] = rmse_train[i,]
@@ -412,8 +415,8 @@ class ptReplica(multiprocessing.Process):
 			#SURROGATE TRAINING
 			if (i%self.surrogate_interval == 0) and (i!=0):
 				#Train the surrogate with the posteriors and likelihood
-				surrogate_X, surrogate_Y = pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]
-				param = np.concatenate([pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
+				surrogate_X, surrogate_Y = s_pos_w[i+1-self.surrogate_interval:i,:],lhood_list[i+1-self.surrogate_interval:i,:]
+				param = np.concatenate([s_pos_w[i+1-self.surrogate_interval:i,:],lhood_list[i+1-self.surrogate_interval:i,:]],axis=1)
 				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
 				self.surrogate_resume.wait()
@@ -422,7 +425,7 @@ class ptReplica(multiprocessing.Process):
 		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature]),np.asarray([i])])
 		#print('SWAPPED PARAM',self.temperature,param)
 		self.parameter_queue.put(param)
-		param = np.concatenate([pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
+		param = np.concatenate([s_pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
 		self.surrogate_parameterqueue.put(param)
 		make_directory(self.path+'/results')
 		make_directory(self.path+'/posterior')
@@ -434,6 +437,13 @@ class ptReplica(multiprocessing.Process):
 		plt.legend()
 		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.pdf')
 		plt.close()
+		########PLOTTING SURROGATES###############################################
+		# fig = plt.figure()
+		# plt.plot(lhood_list[self.surrogate_interval+2:samples-1], label="True")
+		# plt.plot(surrogate_list[self.surrogate_interval+2:samples-1], label="Predict")
+		# plt.legend()
+		# plt.savefig(self.path+'/surrogate'+str(self.temperature)+'.pdf')
+		# plt.close()
 		#SAVING PARAMETERS
 		file_name = self.path+'/posterior/pos_w_chain_'+ str(self.temperature)+ '.txt'
 		np.savetxt(file_name,pos_w ) 
@@ -629,9 +639,7 @@ class ParallelTempering:
 
 	def surrogate_trainer(self,params):
 		X = params[:,:self.num_param]
-		print(X.shape)
 		Y = params[:,self.num_param].reshape(X.shape[0],1)
-		print(Y.shape)
 		surrogate_model = surrogate("nn",X,Y,self.path)
 		surrogate_model.train()
 		
@@ -710,7 +718,6 @@ class ParallelTempering:
 		for j in range(0,self.num_chains):        
 			self.chains[j].start()
 		#SWAP PROCEDURE
-		#chain_num = 0
 		
 		while True:
 			for k in range(0,self.num_chains):
@@ -745,7 +752,6 @@ class ParallelTempering:
 					for k in range(0,self.num_chains):
 						params = self.surrogate_parameterqueues[k].get()
 						all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
-					print(all_param.shape)
 					self.surrogate_trainer(all_param)
 					for k in range(self.num_chains):
 						self.surrogate_resume_events[k].set()
@@ -754,7 +760,6 @@ class ParallelTempering:
 			for i in range(self.num_chains):
 				if self.chains[i].is_alive() is False:
 					count+=1
-			print("COUNTERRRRRRRR",count)
 			if count == self.num_chains  :
 				#print(count)
 				break
@@ -778,7 +783,7 @@ class ParallelTempering:
 		acc_test = np.zeros((self.num_chains,self.NumSamples - burnin))
 		accept_ratio = np.zeros((self.num_chains,1))
 
-		for i in range(self.num_chains):
+		for i in range(self.num_chains): #Loading Files for output
 			file_name = self.path+'/posterior/pos_w_chain_'+ str(self.temperatures[i])+ '.txt'
 			dat = np.loadtxt(file_name)
 			pos_w[i,:,:] = dat[burnin:,:] 
@@ -827,7 +832,7 @@ def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
 	for i in [7]:
-		problem = 7
+		problem = 4
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -873,7 +878,7 @@ def main():
 			hidden = 50
 			ip = 11 #input
 			output = 10
-		if problem == 6:
+		if problem == 6: #Bank additional
 			data = np.genfromtxt('DATA/Bank/bank-processed.csv',delimiter=';')
 			classes = data[:,20].reshape(data.shape[0],1)
 			features = data[:,0:20]
