@@ -11,6 +11,7 @@ import time
 import operator
 import math
 import matplotlib as mpl
+mpl.use('agg')
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -435,14 +436,14 @@ class ptReplica(multiprocessing.Process):
 		plt.plot(acc_train, label="Train")
 		plt.plot(acc_test, label="Test")
 		plt.legend()
-		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.pdf')
+		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.png')
 		plt.close()
 		########PLOTTING SURROGATES###############################################
 		# fig = plt.figure()
 		# plt.plot(lhood_list[self.surrogate_interval+2:samples-1], label="True")
 		# plt.plot(surrogate_list[self.surrogate_interval+2:samples-1], label="Predict")
 		# plt.legend()
-		# plt.savefig(self.path+'/surrogate'+str(self.temperature)+'.pdf')
+		# plt.savefig(self.path+'/surrogate'+str(self.temperature)+'.png')
 		# plt.close()
 		#SAVING PARAMETERS
 		file_name = self.path+'/posterior/pos_w_chain_'+ str(self.temperature)+ '.txt'
@@ -772,6 +773,8 @@ class ParallelTempering:
 		for j in range(0,self.num_chains):
 			self.parameter_queue[i].close()
 			self.parameter_queue[i].join_thread()
+			self.surrogate_parameterqueues[i].close()
+			self.surrogate_parameterqueues[i].join_thread()
 		#GETTING DATA
 		burnin = int(self.NumSamples*self.burn_in)
 		pos_w = np.zeros((self.num_chains,self.NumSamples - burnin, self.num_param))
@@ -831,8 +834,8 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [7]:
-		problem = 4
+	for i in [2,4]:
+		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -906,13 +909,13 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 20000
+		NumSample = 200
 		maxtemp = 20 
 		swap_ratio = 0.125
-		num_chains = 10
+		num_chains = 4
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 750
+		surrogate_interval = 10
 
 		###############################
 		if surrogate_interval < swap_interval:
