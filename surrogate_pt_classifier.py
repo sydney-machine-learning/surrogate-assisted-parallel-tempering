@@ -785,8 +785,8 @@ class ParallelTempering:
 				if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
 					self.surrogate_trainer(all_param)
 					del all_param
-			for k in range(self.num_chains):
-				self.surrogate_resume_events[k].set()
+					for k in range(self.num_chains):
+						self.surrogate_resume_events[k].set()
 			
 			######################
 			for i in range(self.num_chains):
@@ -940,13 +940,13 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 2000
+		NumSample = 20000
 		maxtemp = 20 
 		swap_ratio = 0.025
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 20
+		surrogate_interval = 200 + 100*i
 
 		###############################
 		if surrogate_interval < swap_interval:
