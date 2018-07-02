@@ -11,6 +11,7 @@ import time
 import operator
 import math
 import matplotlib as mpl
+mpl.use('agg')
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
@@ -189,14 +190,16 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		if self.model_id is 2:
 			#Neural Network for prediction
 			try:
-				[net, _, _]= pickle.load(open(self.path+'/nn_params.pckl','rb'))
+				[net, _, _]= pickle.load(open(self.path+'/nn_params.pckl','rb+'))
 			except FileNotFoundError:
 				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.025, max_iter = 1000)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
 			r2 = r2_score(y_test.ravel(), y_pred.ravel())
-			pickle.dump([net, self.mean_Y, self.std_Y], open(self.path+'/nn_params.pckl','wb'))
+			f = open(self.path+'/nn_params.pckl','wb+')
+			pickle.dump([net, self.mean_Y, self.std_Y], f)
+			f.close()
 			print("After Training: MSE = ",mse," R squared score = ",r2)
 
 	def predict(self, X_load):
@@ -210,7 +213,9 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			gp_load.update_model(True)
 			return gp_load.predict(X_load)[0].ravel()[0]
 		if self.model_id == 2:
-			[net, self.mean_Y, self.std_Y]= pickle.load(open(self.path+'/nn_params.pckl','rb'))
+			f = open(self.path+'/nn_params.pckl','rb+')
+			[net, self.mean_Y, self.std_Y]= pickle.load(f)
+			f.close()
 			#print(net.predict(X_load)[0])
 			return (net.predict(X_load)[0]*(self.mean_Y[0,0]-self.std_Y[0,0]) + self.std_Y[0,0])
 
@@ -338,12 +343,12 @@ class ptReplica(multiprocessing.Process):
 			kappa = random.uniform(0,1)
 			timer1 = time.time()
 			is_true_lhood = False
-			if kappa<1 or i<self.surrogate_interval+1:
+			if kappa<0.5 or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
 				is_true_lhood =  True
 				#print(i, 'true:', likelihood_proposal)
-			if i>self.surrogate_interval+1:#else:
+			else:
 				surrogate_model = surrogate("nn",surrogate_X.copy(),surrogate_Y.copy(),self.path)
 				pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w_proposal)
 				rmsetrain = self.rmse(pred_train,y_train)
@@ -390,7 +395,10 @@ class ptReplica(multiprocessing.Process):
 				accept_list.write('{} x {} {} {} {} {}\n'.format(self.temperature, i, rmsetrain, rmsetest, likelihood, diff_likelihood + diff_prior))
 				pos_w[i+1,] = pos_w[i,]
 				s_pos_w[i + 1,] = w_proposal
-				lhood_list[i+1,] = likelihood_proposal*self.temperature#lhood_list[i,]
+				if is_true_lhood == True:
+					lhood_list[i+1,] = likelihood_proposal*self.temperature
+				else:
+					lhood_list[i+1,] = np.mean(lhood_list[:i,]) 
 				fxtrain_samples[i + 1,] = fxtrain_samples[i,]
 				fxtest_samples[i + 1,] = fxtest_samples[i,]
 				rmse_train[i + 1,] = rmse_train[i,]
@@ -435,7 +443,7 @@ class ptReplica(multiprocessing.Process):
 		plt.plot(acc_train, label="Train")
 		plt.plot(acc_test, label="Test")
 		plt.legend()
-		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.pdf')
+		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.png')
 		plt.close()
 		########PLOTTING SURROGATES###############################################
 		# fig = plt.figure()
@@ -494,6 +502,8 @@ class ParallelTempering:
 		self.surrogate_resume_events = [multiprocessing.Event() for i in range(self.num_chains)]
 		self.surrogate_start_events = [multiprocessing.Event() for i in range(self.num_chains)]
 		self.surrogate_parameterqueues = [multiprocessing.Queue() for i in range(self.num_chains)]
+		self.surrchain_queue = multiprocessing.JoinableQueue()
+		self.all_param = None
 
 	def default_beta_ladder(self, ndim, ntemps, Tmax): #https://github.com/konqr/ptemcee/blob/master/ptemcee/sampler.py
 		"""
@@ -606,6 +616,13 @@ class ParallelTempering:
 		
 		for i in range(0, self.num_chains):
 			self.chains.append(ptReplica(w,self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_start_events[i],self.surrogate_resume_events[i]))
+
+	def surr_procedure(self,queue):
+
+		if queue.empty() is False:
+			return queue.get()
+		else:
+			return
 	
 	def swap_procedure(self, parameter_queue_1, parameter_queue_2):
 		if parameter_queue_2.empty() is False and parameter_queue_1.empty() is False:
@@ -746,22 +763,38 @@ class ParallelTempering:
 					self.event[k].set()
 			count = 0
 			# Surrogate's Events:
-			if (param1[self.num_param+3]%self.surrogate_interval == 0):
-					for k in range(0,self.num_chains):
-						self.surrogate_start_events[k].wait()
-					for k in range(0,self.num_chains):
-						params = self.surrogate_parameterqueues[k].get()
-						all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
+			
+			for k in range(0,self.num_chains):
+				self.surrogate_start_events[k].wait()
+			for k in range(0,self.num_chains):
+				self.surrchain_queue.put(self.surr_procedure(self.surrogate_parameterqueues[k]))
+				params = None
+				while True:
+					if self.surrchain_queue.empty():
+						self.surrchain_queue.task_done()
+						#print(k,'EMPTY QUEUE')
+						break
+					params = self.surrchain_queue.get()
+					if params is not None:
+						self.surrchain_queue.task_done()
+						#print(k,'No Process')
+						break
+				if params is not None:
+					all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
+			if ('all_param' in locals()):
+				if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
 					self.surrogate_trainer(all_param)
-					for k in range(self.num_chains):
-						self.surrogate_resume_events[k].set()
 					del all_param
+			for k in range(self.num_chains):
+				self.surrogate_resume_events[k].set()
+			
 			######################
 			for i in range(self.num_chains):
 				if self.chains[i].is_alive() is False:
 					count+=1
+			#print(count)
 			if count == self.num_chains  :
-				#print(count)
+				print(count)
 				break
 			
 		
@@ -772,6 +805,8 @@ class ParallelTempering:
 		for j in range(0,self.num_chains):
 			self.parameter_queue[i].close()
 			self.parameter_queue[i].join_thread()
+			self.surrogate_parameterqueues[i].close()
+			self.surrogate_parameterqueues[i].join_thread()
 		#GETTING DATA
 		burnin = int(self.NumSamples*self.burn_in)
 		pos_w = np.zeros((self.num_chains,self.NumSamples - burnin, self.num_param))
@@ -808,7 +843,6 @@ class ParallelTempering:
 			file_name = self.path + '/posterior/accept_list_chain_' + str(self.temperatures[i]) + '_accept.txt'
 			dat = np.loadtxt(file_name)
 			accept_ratio[i,:] = dat
-
 		pos_w = pos_w.transpose(2,0,1).reshape(self.num_param,-1)
 		accept_total = np.sum(accept_ratio)/self.num_chains
 		fx_train = fxtrain_samples.reshape(self.num_chains*(self.NumSamples - burnin), self.traindata.shape[0])
@@ -831,7 +865,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [7]:
+	for i in range(1,8):
 		problem = 4
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -906,17 +940,19 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 20000
+		NumSample = 2000
 		maxtemp = 20 
-		swap_ratio = 0.125
+		swap_ratio = 0.025
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 750
+		surrogate_interval = 20
 
 		###############################
 		if surrogate_interval < swap_interval:
 			surrogate_interval = swap_interval
+		if surrogate_interval%swap_interval!=0:
+			surrogate_interval = surrogate_interval + swap_interval - surrogate_interval%swap_interval
 		#Separating data to train and test
 		if separate_flag is True:
 			#Normalizing Data
@@ -1007,6 +1043,7 @@ def main():
 		#dir()
 		gc.collect()
 		outres.close()
+		os.remove(path+'/nn_params.pckl')
 	resultingfile.close()
 
 if __name__ == "__main__": main()
