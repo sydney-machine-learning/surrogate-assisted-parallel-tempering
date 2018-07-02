@@ -223,7 +223,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 class ptReplica(multiprocessing.Process):
 
-	def __init__(self, w, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_start,surrogate_resume):
+	def __init__(self, w, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume):
 		#MULTIPROCESSING VARIABLES
 		multiprocessing.Process.__init__(self)
 		self.processID = temperature
@@ -235,6 +235,7 @@ class ptReplica(multiprocessing.Process):
 		self.surrogate_start = surrogate_start
 		self.surrogate_resume = surrogate_resume
 		self.surrogate_interval = surrogate_interval
+		self.surrogate_prob = surrogate_prob
 		#PARALLEL TEMPERING VARIABLES
 		self.temperature = temperature
 		self.swap_interval = swap_interval
@@ -343,7 +344,7 @@ class ptReplica(multiprocessing.Process):
 			kappa = random.uniform(0,1)
 			timer1 = time.time()
 			is_true_lhood = False
-			if kappa<0.5 or i<self.surrogate_interval+1:
+			if kappa<self.surrogate_prob or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
 				is_true_lhood =  True
@@ -475,7 +476,7 @@ class ptReplica(multiprocessing.Process):
 
 class ParallelTempering:
 
-	def __init__(self, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, path):
+	def __init__(self, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path):
 		#FNN Chain variables
 		self.traindata = traindata
 		self.testdata = testdata
@@ -499,6 +500,7 @@ class ParallelTempering:
 		self.event = [multiprocessing.Event() for i in range (self.num_chains)]
 		# create variables for surrogates
 		self.surrogate_interval = surrogate_interval
+		self.surrogate_prob = surrogate_prob
 		self.surrogate_resume_events = [multiprocessing.Event() for i in range(self.num_chains)]
 		self.surrogate_start_events = [multiprocessing.Event() for i in range(self.num_chains)]
 		self.surrogate_parameterqueues = [multiprocessing.Queue() for i in range(self.num_chains)]
@@ -615,7 +617,7 @@ class ParallelTempering:
 		w = np.random.randn(self.num_param)
 		
 		for i in range(0, self.num_chains):
-			self.chains.append(ptReplica(w,self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_start_events[i],self.surrogate_resume_events[i]))
+			self.chains.append(ptReplica(w,self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i]))
 
 	def surr_procedure(self,queue):
 
@@ -865,7 +867,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in range(1,8):
+	for i in range(3,10):
 		problem = 4
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -946,8 +948,8 @@ def main():
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 200 + 100*i
-
+		surrogate_interval = 500
+		surrogate_prob = 0.1*i
 		###############################
 		if surrogate_interval < swap_interval:
 			surrogate_interval = swap_interval
@@ -967,10 +969,10 @@ def main():
 
 		
 		timer = time.time()
-		path = "RESULTS/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)
+		path = "RESULTS/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
 		make_directory(path)
 		print(path)
-		pt = ParallelTempering(traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, path)
+		pt = ParallelTempering(traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path)
 		pt.initialize_chains(burn_in)
 
 		pos_w, fx_train, fx_test, x_train, x_test, rmse_train, rmse_test, accept_total = pt.run_chains()

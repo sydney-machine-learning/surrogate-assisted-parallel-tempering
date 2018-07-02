@@ -1,9 +1,4 @@
-RESULTS/Cancer_results_20000_20_4_0.125_625
-1.0
-2.7144176165949068
-7.368062997280774
-20.0
-RESULTS/Cancer_results_20000_20_10_0.125_350
+RESULTS/Cancer_results_20000_20_10_0.025_300
 1.0
 1.3949507939624208
 1.945887717576389
@@ -14,17 +9,31 @@ RESULTS/Cancer_results_20000_20_10_0.125_350
 10.278085328021955
 14.337423288737734
 20.0
-13.2 % was accepted
-37.6 % was accepted
-70.55 % was accepted
-54.3 % was accepted
-82.1 % was accepted
-25.2 % was accepted
-76.85 % was accepted
-93.25 % was accepted
-78.5 % was accepted
-90.0 % was accepted
-RESULTS/Cancer_results_20000_20_10_0.125_350
+After Training: MSE =  0.001421547684317264  R squared score =  0.9685652182908071
+After Training: MSE =  0.010291773552238455  R squared score =  0.4383974491074596
+After Training: MSE =  0.011594560494317918  R squared score =  0.25263093624068644
+After Training: MSE =  0.00979515846473232  R squared score =  0.5756895645157507
+After Training: MSE =  0.007883754585244117  R squared score =  0.47900150354918514
+After Training: MSE =  0.0077913898268950664  R squared score =  0.4044188403245822
+33.1 % was accepted
+82.65 % was accepted
+42.3 % was accepted
+57.75 % was accepted
+17.8 % was accepted
+18.0 % was accepted
+18.45 % was accepted
+38.1 % was accepted
+21.65 % was accepted
+23.6 % was accepted
+10
+accuracies [60.33] [77.62]
+NUMBER OF SWAPS = 19653
+SWAP ACCEPTANCE =  [12.860143566656415]  %
+Successfully Regressed
+35.339999999999996 % total accepted
+253.252427816391 sec time taken
+0.6300000000000001 1.1102230246251565e-16 0.46999999999999975 2.220446049250313e-16
+RESULTS/Cancer_results_20000_20_10_0.025_400
 1.0
 1.3949507939624208
 1.945887717576389
@@ -35,7 +44,29 @@ RESULTS/Cancer_results_20000_20_10_0.125_350
 10.278085328021955
 14.337423288737734
 20.0
-RESULTS/Cancer_results_20000_20_10_0.125_350
+After Training: MSE =  0.0009761781051508443  R squared score =  0.9878240442113801
+After Training: MSE =  0.01903385276941028  R squared score =  0.5362200377336368
+After Training: MSE =  0.019242249364670918  R squared score =  0.5818298758910905
+After Training: MSE =  0.0186446833197693  R squared score =  0.5674861707795065
+17.9 % was accepted
+34.3 % was accepted
+20.75 % was accepted
+21.85 % was accepted
+27.65 % was accepted
+29.25 % was accepted
+67.75 % was accepted
+48.8 % was accepted
+21.1 % was accepted
+14.6 % was accepted
+10
+accuracies [65.24] [78.1]
+NUMBER OF SWAPS = 14147
+SWAP ACCEPTANCE =  [7.404751561085144]  %
+Successfully Regressed
+30.395 % total accepted
+252.85986351966858 sec time taken
+0.688169375 0.10639651104293493 0.5948887499999999 0.20265759330318098
+RESULTS/Cancer_results_20000_20_10_0.025_500
 1.0
 1.3949507939624208
 1.945887717576389
@@ -46,3 +77,375 @@ RESULTS/Cancer_results_20000_20_10_0.125_350
 10.278085328021955
 14.337423288737734
 20.0
+After Training: MSE =  0.0006097124953812851  R squared score =  0.9815431936327527
+After Training: MSE =  0.02530171902479036  R squared score =  0.2985195106076617
+After Training: MSE =  0.0196807703742544  R squared score =  0.4223874001729401
+24.9 % was accepted
+22.95 % was accepted
+20.65 % was accepted
+15.05 % was accepted
+29.55 % was accepted
+24.05 % was accepted
+47.55 % was accepted
+28.95 % was accepted
+61.35 % was accepted
+55.9 % was accepted
+10
+accuracies [96.32] [99.05]
+NUMBER OF SWAPS = 18260
+SWAP ACCEPTANCE =  [11.683483802442911]  %
+Successfully Regressed
+33.089999999999996 % total accepted
+248.33639645576477 sec time taken
+0.38414875 0.13811422038818993 0.243861875 0.14505427319277558
+RESULTS/Cancer_results_20000_20_10_0.025_600
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0006248054181643258  R squared score =  0.9860445976121057
+After Training: MSE =  0.029138652296368684  R squared score =  0.5281767473590557
+After Training: MSE =  0.031008624012671997  R squared score =  0.45892713032584054
+32.65 % was accepted
+70.45 % was accepted
+41.55 % was accepted
+29.45 % was accepted
+23.95 % was accepted
+30.8 % was accepted
+62.05 % was accepted
+27.6 % was accepted
+44.35 % was accepted
+34.2 % was accepted
+10
+accuracies [96.32] [99.05]
+NUMBER OF SWAPS = 21373
+SWAP ACCEPTANCE =  [16.192402684970528]  %
+Successfully Regressed
+39.705 % total accepted
+243.85416913032532 sec time taken
+0.4719018750000001 0.1747167754438147 0.3300362499999999 0.1534808169965794
+RESULTS/Cancer_results_20000_20_10_0.025_700
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0005012147424327521  R squared score =  0.9928151594411448
+After Training: MSE =  0.023125069394296868  R squared score =  0.5474472890009372
+36.15 % was accepted
+35.55 % was accepted
+46.05 % was accepted
+44.15 % was accepted
+36.8 % was accepted
+39.7 % was accepted
+48.0 % was accepted
+54.4 % was accepted
+30.0 % was accepted
+71.85 % was accepted
+10
+accuracies [72.19] [85.24]
+NUMBER OF SWAPS = 18941
+SWAP ACCEPTANCE =  [11.72512411632888]  %
+Successfully Regressed
+44.265 % total accepted
+234.0346417427063 sec time taken
+0.6259450000000001 0.0108400634223237 0.46583749999999985 0.011141637839653551
+RESULTS/Cancer_results_20000_20_10_0.025_800
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.000555386542713356  R squared score =  0.9895086644984438
+After Training: MSE =  0.021894663363106352  R squared score =  0.4830283161521377
+39.6 % was accepted
+70.1 % was accepted
+47.1 % was accepted
+60.7 % was accepted
+39.25 % was accepted
+52.15 % was accepted
+33.65 % was accepted
+39.85 % was accepted
+58.95 % was accepted
+36.4 % was accepted
+10
+accuracies [61.96] [80.48]
+NUMBER OF SWAPS = 16843
+SWAP ACCEPTANCE =  [10.622477295660948]  %
+Successfully Regressed
+47.775 % total accepted
+227.27301836013794 sec time taken
+0.6299331250000001 0.0008150323517351942 0.46995062499999984 0.0008008196484696137
+RESULTS/Cancer_results_20000_20_10_0.025_900
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0003754731243008935  R squared score =  0.9922082533027204
+74.6 % was accepted
+51.35 % was accepted
+48.3 % was accepted
+45.9 % was accepted
+61.0 % was accepted
+39.25 % was accepted
+41.7 % was accepted
+70.9 % was accepted
+After Training: MSE =  0.03181792352320728  R squared score =  0.3368628908035445
+55.6 % was accepted
+54.4 % was accepted
+10
+accuracies [96.52] [99.05]
+NUMBER OF SWAPS = 15021
+SWAP ACCEPTANCE =  [10.950246036085293]  %
+Successfully Regressed
+54.3 % total accepted
+213.7448387145996 sec time taken
+0.550918125 0.12603903481257056 0.3928674999999999 0.12136196868768237
+###################################################################################
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.1
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.001239185572518028  R squared score =  0.9522026902823338
+After Training: MSE =  0.0032884045765152552  R squared score =  0.28761785202245227
+After Training: MSE =  0.002680020919955244  R squared score =  0.04256746715020343
+23.3 % was accepted
+42.55 % was accepted
+25.3 % was accepted
+78.3 % was accepted
+23.85 % was accepted
+91.4 % was accepted
+32.15 % was accepted
+24.5 % was accepted
+24.6 % was accepted
+25.3 % was accepted
+10
+accuracies [39.67] [22.38]
+NUMBER OF SWAPS = 31113
+SWAP ACCEPTANCE =  [14.281320860376942]  %
+Successfully Regressed
+39.125 % total accepted
+369.68510699272156 sec time taken
+0.78 0.0 0.8800000000000003 3.3306690738754696e-16
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.2
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0007974338988207612  R squared score =  0.9770392549028594
+After Training: MSE =  0.014599783224244522  R squared score =  0.41028948736703785
+After Training: MSE =  0.018538827547143776  R squared score =  0.2662587897516786
+30.4 % was accepted
+28.05 % was accepted
+29.1 % was accepted
+38.6 % was accepted
+18.75 % was accepted
+20.8 % was accepted
+48.05 % was accepted
+26.7 % was accepted
+21.25 % was accepted
+23.05 % was accepted
+10
+accuracies [95.3] [99.05]
+NUMBER OF SWAPS = 23603
+SWAP ACCEPTANCE =  [11.660409050489083]  %
+Successfully Regressed
+28.475 % total accepted
+339.4791841506958 sec time taken
+0.45685812499999995 0.15295423293091426 0.314024375 0.2026724837166096
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.30000000000000004
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0006957827512626011  R squared score =  0.9751548859469508
+After Training: MSE =  0.01240917554353073  R squared score =  0.2701888778965058
+After Training: MSE =  0.014767106839108795  R squared score =  0.2627238625685806
+45.95 % was accepted
+19.95 % was accepted
+35.35 % was accepted
+25.05 % was accepted
+36.35 % was accepted
+76.05 % was accepted
+15.65 % was accepted
+30.45 % was accepted
+28.85 % was accepted
+56.1 % was accepted
+10
+accuracies [94.07] [97.62]
+NUMBER OF SWAPS = 23400
+SWAP ACCEPTANCE =  [12.52060013269696]  %
+Successfully Regressed
+36.97500000000001 % total accepted
+306.0656771659851 sec time taken
+0.593389375 0.15615322887186603 0.541 0.23096609599679346
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.4
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0006810348385792263  R squared score =  0.9895923242332044
+After Training: MSE =  0.03554602307533113  R squared score =  0.33490188375996943
+After Training: MSE =  0.03138329684394263  R squared score =  0.34519875050662563
+27.15 % was accepted
+26.8 % was accepted
+43.85 % was accepted
+33.45 % was accepted
+29.15 % was accepted
+29.1 % was accepted
+56.6 % was accepted
+23.3 % was accepted
+23.85 % was accepted
+27.0 % was accepted
+10
+accuracies [75.26] [87.62]
+NUMBER OF SWAPS = 20573
+SWAP ACCEPTANCE =  [11.353314165567555]  %
+Successfully Regressed
+32.025000000000006 % total accepted
+274.64019322395325 sec time taken
+0.76203 0.10151812202754737 0.8024662500000002 0.18808878916867292
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0006186051966440581  R squared score =  0.9891597446425354
+After Training: MSE =  0.013700930710787427  R squared score =  0.636364426908417
+After Training: MSE =  0.016729516235042916  R squared score =  0.43054804494781007
+25.35 % was accepted
+31.55 % was accepted
+61.85 % was accepted
+25.4 % was accepted
+31.25 % was accepted
+66.1 % was accepted
+22.65 % was accepted
+49.9 % was accepted
+30.4 % was accepted
+34.1 % was accepted
+10
+accuracies [96.32] [99.05]
+NUMBER OF SWAPS = 15990
+SWAP ACCEPTANCE =  [9.426231924212859]  %
+Successfully Regressed
+37.855 % total accepted
+244.95646166801453 sec time taken
+0.6229387499999999 0.21215619540432354 0.6396856250000001 0.29495000833761537
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.6000000000000001
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0008596248364047542  R squared score =  0.9800425529103539
+After Training: MSE =  0.01997642877545514  R squared score =  0.7101985558264574
+After Training: MSE =  0.025378543954573993  R squared score =  0.506051005216986
+29.1 % was accepted
+31.05 % was accepted
+28.3 % was accepted
+27.9 % was accepted
+41.05 % was accepted
+22.15 % was accepted
+22.0 % was accepted
+24.75 % was accepted
+14.65 % was accepted
+70.95 % was accepted
+10
+accuracies [91.62] [96.19]
+NUMBER OF SWAPS = 18600
+SWAP ACCEPTANCE =  [13.458463275037445]  %
+Successfully Regressed
+31.189999999999998 % total accepted
+210.64073061943054 sec time taken
+0.5814018750000001 0.12031906954628752 0.48364124999999997 0.17415525773986126
+RESULTS/Cancer_results_20000_20_10_0.025_500_0.7000000000000001
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0009939363978416788  R squared score =  0.9835614965809866
+After Training: MSE =  0.014821105053513244  R squared score =  0.5625918923187605
+After Training: MSE =  0.013690674054980643  R squared score =  0.6699470328573159
+73.65 % was accepted
+22.95 % was accepted
+38.5 % was accepted
+25.0 % was accepted
+23.3 % was accepted
+84.25 % was accepted
+33.75 % was accepted
+37.7 % was accepted
+26.25 % was accepted
+38.2 % was accepted
+10
+accuracies [82.21] [89.52]
+NUMBER OF SWAPS = 20644
+SWAP ACCEPTANCE =  [17.01755832165526]  %
+Successfully Regressed
+40.355000000000004 % total accepted
+181.42314672470093 sec time taken
+0.774106875 0.09037831503040084 0.7921793750000001 0.15679778083445373
+
