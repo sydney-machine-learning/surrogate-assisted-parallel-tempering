@@ -867,8 +867,8 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in range(1):
-		problem = 2
+	for i in range(3,8):
+		problem = 6
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -949,7 +949,7 @@ def main():
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
 		surrogate_interval = 500
-		surrogate_prob = 0.7
+		surrogate_prob = 0.1 * i
 		###############################
 		if surrogate_interval < swap_interval:
 			surrogate_interval = swap_interval
