@@ -67,20 +67,6 @@ class Network:
 		self.W1 += (Input.T.reshape(self.Top[0],1).dot(hid_delta) * self.lrate)
 		self.B1 += (-1 * self.lrate * hid_delta)
 
-		# layer = 1  # hidden to output
-		# for x in range(0, self.Top[layer]):
-		# 	for y in range(0, self.Top[layer + 1]):
-		# 		self.W2[x, y] += self.lrate * out_delta[y] * self.hidout[x]
-		# for y in range(0, self.Top[layer + 1]):
-		# 	self.B2[y] += -1 * self.lrate * out_delta[y]
-
-		# layer = 0  # Input to Hidden
-		# for x in range(0, self.Top[layer]):
-		# 	for y in range(0, self.Top[layer + 1]):
-		# 		self.W1[x, y] += self.lrate * hid_delta[y] * Input[x]
-		# for y in range(0, self.Top[layer + 1]):
-		# 	self.B1[y] += -1 * self.lrate * hid_delta[y]
-
 	def decode(self, w):
 		w_layer1size = self.Top[0] * self.Top[1]
 		w_layer2size = self.Top[1] * self.Top[2]
