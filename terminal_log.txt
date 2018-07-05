@@ -1,3 +1,206 @@
+RESULTS/iris_results_20000_20_10_0.025_200_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0020084879343672266  R squared score =  0.9337355462117801
+After Training: MSE =  0.011828836672975733  R squared score =  0.40565209081301556
+After Training: MSE =  0.020724772692665035  R squared score =  0.3654003071116796
+After Training: MSE =  0.025428512052011347  R squared score =  0.4212947729668822
+After Training: MSE =  0.024220961600448142  R squared score =  0.39519791273317406
+After Training: MSE =  0.01672795368631386  R squared score =  0.4474233296910093
+After Training: MSE =  0.020659132826945474  R squared score =  0.3034029661693881
+After Training: MSE =  0.014714122016529255  R squared score =  0.37462218319432417
+After Training: MSE =  0.023802059833716468  R squared score =  0.2414355772341782
+88.0 % was accepted
+11.8 % was accepted
+11.05 % was accepted
+15.2 % was accepted
+92.15 % was accepted
+14.05 % was accepted
+83.6 % was accepted
+25.7 % was accepted
+63.6 % was accepted
+11.45 % was accepted
+10
+accuracies [68.89] [53.7]
+NUMBER OF SWAPS = 9060
+SWAP ACCEPTANCE =  [16.26658527389267]  %
+Successfully Regressed
+41.660000000000004 % total accepted
+180.41437482833862 sec time taken
+0.758653125 0.09716129464830311 0.7185475000000001 0.023341009912812245
+RESULTS/iris_results_20000_20_10_0.025_300_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0010321635949140577  R squared score =  0.9671111746390917
+After Training: MSE =  0.01586843260565544  R squared score =  0.4627574079181904
+After Training: MSE =  0.033808069645621  R squared score =  0.3654822973981531
+After Training: MSE =  0.012662141079256973  R squared score =  0.6429200233281999
+After Training: MSE =  0.014002276422488039  R squared score =  0.5458667886593265
+After Training: MSE =  0.00930327310300591  R squared score =  0.5141192036113271
+32.3 % was accepted
+30.25 % was accepted
+30.85 % was accepted
+69.05 % was accepted
+15.5 % was accepted
+92.2 % was accepted
+35.8 % was accepted
+88.85 % was accepted
+23.65 % was accepted
+15.9 % was accepted
+10
+accuracies [64.44] [62.63]
+NUMBER OF SWAPS = 5357
+SWAP ACCEPTANCE =  [8.208703646950658]  %
+Successfully Regressed
+43.434999999999995 % total accepted
+175.41934466362 sec time taken
+0.997291875 0.18190783328098978 1.41749375 0.31912204751620893
+RESULTS/iris_results_20000_20_10_0.025_400_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0006799335655446092  R squared score =  0.9826958099947879
+After Training: MSE =  0.018661880350183204  R squared score =  0.5229967609697981
+After Training: MSE =  0.021263796717356506  R squared score =  0.37101221934068185
+After Training: MSE =  0.018017597203343692  R squared score =  0.2878891101888612
+25.2 % was accepted
+52.85 % was accepted
+15.55 % was accepted
+83.85 % was accepted
+90.0 % was accepted
+36.65 % was accepted
+28.15 % was accepted
+64.25 % was accepted
+21.65 % was accepted
+19.9 % was accepted
+10
+accuracies [86.67] [86.9]
+NUMBER OF SWAPS = 12271
+SWAP ACCEPTANCE =  [14.305699663079846]  %
+Successfully Regressed
+43.80499999999999 % total accepted
+193.86795353889465 sec time taken
+0.855345625 0.37857358009158454 0.8617575 0.35339948881365124
+RESULTS/iris_results_20000_20_10_0.025_500_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.0012082061255235892  R squared score =  0.9622858127694891
+After Training: MSE =  0.021473801280662865  R squared score =  0.29991339998063427
+After Training: MSE =  0.017723308800217108  R squared score =  0.4105389534846625
+27.95 % was accepted
+24.8 % was accepted
+26.65 % was accepted
+46.4 % was accepted
+36.75 % was accepted
+82.8 % was accepted
+36.6 % was accepted
+68.4 % was accepted
+24.1 % was accepted
+88.6 % was accepted
+10
+accuracies [76.67] [80.36]
+NUMBER OF SWAPS = 10144
+SWAP ACCEPTANCE =  [13.269671005297926]  %
+Successfully Regressed
+46.30499999999999 % total accepted
+177.07627153396606 sec time taken
+0.98124125 0.20673590471526104 1.4502725 0.3538421975171277
+RESULTS/iris_results_20000_20_10_0.025_600_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.000751070810040179  R squared score =  0.981199307461985
+After Training: MSE =  0.020798081158305056  R squared score =  0.4741783499526211
+After Training: MSE =  0.016275312016935165  R squared score =  0.43297458302142466
+30.3 % was accepted
+38.1 % was accepted
+31.15 % was accepted
+80.6 % was accepted
+45.1 % was accepted
+30.9 % was accepted
+36.55 % was accepted
+86.75 % was accepted
+30.7 % was accepted
+72.1 % was accepted
+10
+accuracies [74.44] [100.]
+NUMBER OF SWAPS = 11400
+SWAP ACCEPTANCE =  [12.80942054226547]  %
+Successfully Regressed
+48.225 % total accepted
+167.11252307891846 sec time taken
+0.76828625 0.25189263697245595 0.476045625 0.3398818642828113
+RESULTS/iris_results_20000_20_10_0.025_700_0.5
+1.0
+1.3949507939624208
+1.945887717576389
+2.7144176165949068
+3.7864790094146477
+5.281951900505004
+7.368062997280774
+10.278085328021955
+14.337423288737734
+20.0
+After Training: MSE =  0.001017628530824535  R squared score =  0.9798511151742777
+After Training: MSE =  0.02289639549785852  R squared score =  0.32677000471655027
+71.8 % was accepted
+35.7 % was accepted
+46.25 % was accepted
+36.45 % was accepted
+38.3 % was accepted
+76.6 % was accepted
+36.95 % was accepted
+33.3 % was accepted
+82.2 % was accepted
+63.3 % was accepted
+10
+accuracies [85.56] [95.92]
+NUMBER OF SWAPS = 10427
+SWAP ACCEPTANCE =  [12.490716116821199]  %
+Successfully Regressed
+52.085 % total accepted
+160.51371574401855 sec time taken
+0.56857875 0.05423702654494897 0.973645625 0.12537609687799095
+##################################################################################
+
 RESULTS/Cancer_results_20000_20_10_0.025_300
 1.0
 1.3949507939624208
