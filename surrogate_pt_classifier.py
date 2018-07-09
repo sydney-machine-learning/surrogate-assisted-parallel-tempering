@@ -178,7 +178,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			try:
 				[net, _, _]= pickle.load(open(self.path+'/nn_params.pckl','rb+'))
 			except FileNotFoundError:
-				net = MLPRegressor(hidden_layer_sizes=(100,),activation='relu',solver='adam',alpha=0.025, max_iter = 1000)
+				net = MLPRegressor(hidden_layer_sizes=(200,20,),activation='relu',solver='adam',alpha=0.025, max_iter = 1000)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())
@@ -855,7 +855,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [2,3,4,6,7]:
+	for i in [7,8]:
 		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -925,19 +925,28 @@ def main():
 			ip = 16
 			hidden = 30
 			output = 10
+		if problem == 8: #Chess
+			data  = np.genfromtxt('DATA/chess.csv',delimiter=';')
+			classes = data[:,6].reshape(data.shape[0],1)
+			features = data[:,0:6]
+			separate_flag = True
+			name = "chess"
+			hidden = 25
+			ip = 6 #input
+			output = 18
 		###############################
 		#THESE ARE THE HYPERPARAMETERS#
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 20000
+		NumSample = 50000
 		maxtemp = 20 
-		swap_ratio = 0.125
+		swap_ratio = 0.025
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
 		surrogate_interval = 500
-		surrogate_prob = 0.5
+		surrogate_prob = 0.3
 		###############################
 		if surrogate_interval < swap_interval:
 			surrogate_interval = swap_interval
