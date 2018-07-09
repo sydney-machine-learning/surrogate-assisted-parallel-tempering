@@ -203,7 +203,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			[net, self.mean_Y, self.std_Y]= pickle.load(f)
 			f.close()
 			#print(net.predict(X_load)[0])
-			return (net.predict(X_load)[0]*(self.mean_Y[0,0]-self.std_Y[0,0]) + self.std_Y[0,0])
+			return net.predict(X_load)[0], self.mean_Y[0,0], self.std_Y[0,0]#*(self.mean_Y[0,0]-self.std_Y[0,0]) + self.std_Y[0,0])
 
 
 
@@ -260,7 +260,7 @@ class ptReplica(multiprocessing.Process):
 	def prior_likelihood(self, sigma_squared, nu_1, nu_2, w):
 		h = self.topology[1]  # number hidden neurons
 		d = self.topology[0]  # number input neurons
-		part1 = -1 * ((d * h + h + self.topology[2]+1) / 2) * np.log(sigma_squared)
+		part1 = -1 * ((d * h + h + self.topology[2]+h*self.topology[2]) / 2) * np.log(sigma_squared)
 		part2 = 1 / (2 * sigma_squared) * (sum(np.square(w)))
 		log_loss = part1 - part2
 		return log_loss
@@ -330,6 +330,7 @@ class ptReplica(multiprocessing.Process):
 			kappa = random.uniform(0,1)
 			timer1 = time.time()
 			is_true_lhood = False
+			is_surr_lhood = False
 			if kappa<self.surrogate_prob or i<self.surrogate_interval+1:
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
@@ -341,8 +342,9 @@ class ptReplica(multiprocessing.Process):
 				rmsetrain = self.rmse(pred_train,y_train)
 				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
 				rmsetest = self.rmse(pred_test,y_test)
-				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
-				#surrogate_list[i,] = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
+				is_surr_lhood = True
+				#likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
+				surrogate_list[i,], maxer, miner = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))
 				#print(i, 'predicted', likelihood_proposal)
 			#print(self.temperature, time.time() - timer1)
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
@@ -368,7 +370,7 @@ class ptReplica(multiprocessing.Process):
 				pos_w[i + 1,] = w_proposal
 				s_pos_w[i+1,] = w_proposal
 				if is_true_lhood == True:
-					lhood_list[i+1,] = likelihood*self.temperature
+					lhood_list[i+1,] = (likelihood*self.temperature)
 				else:
 					lhood_list[i+1,] = np.mean(lhood_list[:i,]) 
 				fxtrain_samples[i + 1,] = pred_train
@@ -383,7 +385,7 @@ class ptReplica(multiprocessing.Process):
 				pos_w[i+1,] = pos_w[i,]
 				s_pos_w[i + 1,] = w_proposal
 				if is_true_lhood == True:
-					lhood_list[i+1,] = likelihood_proposal*self.temperature
+					lhood_list[i+1,] = (likelihood_proposal*self.temperature)
 				else:
 					lhood_list[i+1,] = np.mean(lhood_list[:i,]) 
 				fxtrain_samples[i + 1,] = fxtrain_samples[i,]
@@ -853,8 +855,8 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in range(8):
-		problem = 2
+	for i in [2,3,4,6,7]:
+		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
@@ -930,11 +932,11 @@ def main():
 
 		NumSample = 20000
 		maxtemp = 20 
-		swap_ratio = 0.025
+		swap_ratio = 0.125
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 200 + 100*i
+		surrogate_interval = 500
 		surrogate_prob = 0.5
 		###############################
 		if surrogate_interval < swap_interval:
