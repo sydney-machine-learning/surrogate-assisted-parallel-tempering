@@ -165,7 +165,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			fname = self.path + '/gp_params'
 			try:
 				gp_load[:] = np.load('%s_gp_params.npy'%(fname))
-			except EnvironmentError:
+			except FileNotFoundError:
 				print('Training Model for the first time')
 			gp_load.update_model(True)
 			gp_load.optimize_restarts(messages = False, num_restarts = 2)
@@ -180,7 +180,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			#Neural Network for prediction
 			try:
 				[net, _, _]= pickle.load(open(self.path+'/nn_params.pckl','rb+'))
-			except FileNotFoundError:
+			except EnvironmentError:
 				net = MLPRegressor(hidden_layer_sizes=(350,17,),activation='relu',solver='adam',alpha=0.025, max_iter = 1000)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
@@ -945,13 +945,13 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 200
+		NumSample = 20000
 		maxtemp = 20 
 		swap_ratio = 0.025
-		num_chains = 1
+		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 5
+		surrogate_interval = 500
 		surrogate_prob = 0.5
 		###############################
 		if surrogate_interval < swap_interval:
