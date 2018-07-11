@@ -34,7 +34,6 @@ class Network:
 		self.TrainData = Train
 		self.TestData = Test
 		self.lrate = learn_rate
-
 		self.W1 = np.random.randn(self.Top[0], self.Top[1]) / np.sqrt(self.Top[0])
 		self.B1 = np.random.randn(1, self.Top[1]) / np.sqrt(self.Top[1])  # bias first layer
 		self.W2 = np.random.randn(self.Top[1], self.Top[2]) / np.sqrt(self.Top[1])
