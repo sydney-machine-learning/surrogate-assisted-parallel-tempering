@@ -503,7 +503,7 @@ class ParallelTempering:
 		self.surrogate_parameterqueues = [multiprocessing.Queue() for i in range(self.num_chains)]
 		self.surrchain_queue = multiprocessing.JoinableQueue()
 		self.all_param = None
-		self.geometric = False # True (geometric)  False (Linear)
+		self.geometric = True # True (geometric)  False (Linear)
 
 	def default_beta_ladder(self, ndim, ntemps, Tmax): #https://github.com/konqr/ptemcee/blob/master/ptemcee/sampler.py
 		"""
