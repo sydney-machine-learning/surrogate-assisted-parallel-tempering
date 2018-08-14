@@ -321,7 +321,7 @@ class ptReplica(multiprocessing.Process):
 		[likelihood, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w)
 		[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w)
 		#Beginning Sampling using MCMC RANDOMWALK
-		accept_list = open(self.path+'/acceptlist_'+str(self.temperature)+'.txt', "a+")
+		accept_list = open(self.path+'/acceptlist_'+str(int(self.temperature*10))+'.txt', "a+")
 		trainacc = 0
 		testacc=0
 		#Surrogate Init
@@ -372,7 +372,7 @@ class ptReplica(multiprocessing.Process):
 				likelihood = likelihood_proposal
 				prior_current = prior_prop
 				w = w_proposal
-				#print (i,'accepted')
+				print (i, self.temperature, likelihood, rmsetrain, rmsetest,  'accepted')
 				accept_list.write('{} {} {} {} {} {} {}\n'.format(self.temperature,naccept, i, rmsetrain, rmsetest, diff_likelihood, diff_likelihood + diff_prior))
 				pos_w[i + 1,] = w_proposal
 				s_pos_w[i+1,] = w_proposal
@@ -386,6 +386,8 @@ class ptReplica(multiprocessing.Process):
 				rmse_test[i + 1,] = rmsetest
 				acc_train[i+1,] = self.accuracy(pred_train, y_train)
 				acc_test[i+1,] = self.accuracy(pred_test, y_test)
+
+
 				
 			else:
 				accept_list.write('{} x {} {} {} {} {}\n'.format(self.temperature, i, rmsetrain, rmsetest, likelihood, diff_likelihood + diff_prior))
@@ -501,6 +503,7 @@ class ParallelTempering:
 		self.surrogate_parameterqueues = [multiprocessing.Queue() for i in range(self.num_chains)]
 		self.surrchain_queue = multiprocessing.JoinableQueue()
 		self.all_param = None
+		self.geometric = False # True (geometric)  False (Linear)
 
 	def default_beta_ladder(self, ndim, ntemps, Tmax): #https://github.com/konqr/ptemcee/blob/master/ptemcee/sampler.py
 		"""
@@ -601,10 +604,21 @@ class ParallelTempering:
 		# 	temp += 2.5 #(self.maxtemp/self.num_chains)
 		# 	print (self.temperatures[i])
 		#Geometric Spacing
-		betas = self.default_beta_ladder(2, ntemps=self.num_chains, Tmax=self.maxtemp)      
-		for i in range(0, self.num_chains):         
-			self.temperatures.append(np.inf if betas[i] is 0 else 1.0/betas[i])
-			print (self.temperatures[i])
+
+		if self.geometric == True:
+			betas = self.default_beta_ladder(2, ntemps=self.num_chains, Tmax=self.maxtemp)      
+			for i in range(0, self.num_chains):         
+				self.temperatures.append(np.inf if betas[i] is 0 else 1.0/betas[i])
+				print (self.temperatures[i])
+		else:
+ 
+			tmpr_rate = (self.maxtemp /self.num_chains)
+			temp = 1
+			for i in xrange(0, self.num_chains):            
+				self.temperatures.append(temp)
+				temp += tmpr_rate
+				print(self.temperatures[i])
+
 
 	def initialize_chains(self, burn_in):
 		self.burn_in = burn_in
@@ -763,6 +777,9 @@ class ParallelTempering:
 					self.event[k].set()
 			count = 0
 			# Surrogate's Events:
+
+
+			#print('surrogate')
 			
 			for k in range(0,self.num_chains):
 				self.surrogate_start_events[k].wait()
@@ -863,11 +880,12 @@ def make_directory (directory):
 		os.makedirs(directory)
 
 def main():
-	make_directory('SydneyResults')
-	resultingfile = open('SydneyResults/master_result_file.txt','a+')
-	for i in [8]:
+
+	for i in range(2, 4):
 		problem = i
 		separate_flag = False
+		print(problem, ' problem')
+
 		#DATA PREPROCESSING 
 		if problem == 1: #Wine Quality White
 			data  = np.genfromtxt('DATA/winequality-red.csv',delimiter=';')
@@ -949,14 +967,54 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 5000
+		NumSample = 2000 
 		maxtemp = 20 
-		swap_ratio = 0.025
+		swap_ratio = 0.05
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 500
+		surrogate_interval = 50  
 		surrogate_prob = 0.5
+
+
+
+
+		problemfolder = 'SydneyResults/'
+
+			#path = "SydneyResults/"+name+"_results_"+str(NumSample) 
+		#make_directory(path)
+		#print(path)
+
+
+		fname = ""
+		run_nb = 0
+		while os.path.exists(problemfolder +name+'_%s' % (run_nb)):
+			run_nb += 1
+		if not os.path.exists(problemfolder +name+'_%s' % (run_nb)):
+			os.makedirs(problemfolder +name+'_%s' % (run_nb))
+			path = (problemfolder +name+'_%s' % (run_nb))
+
+		#fname = ('sampleresults')
+  
+		#make_directory((fname + '/posterior/pos_parameters')) 
+
+
+		#make_directory('SydneyResults')
+		resultingfile = open( path+'/master_result_file.txt','a+')
+		expfile = open( path+'/expdesign_file.txt','w')
+
+
+
+
+
+
+
+
+
+
+
+
+
 		###############################
 		if surrogate_interval < swap_interval:
 			surrogate_interval = swap_interval
@@ -976,9 +1034,9 @@ def main():
 
 		
 		timer = time.time()
-		path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
-		make_directory(path)
-		print(path)
+		#path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
+		
+	
 		pt = ParallelTempering(traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path)
 		pt.initialize_chains(burn_in)
 
@@ -1003,9 +1061,11 @@ def main():
 		rmsetr_std = np.std(rmse_train[:])
 		rmse_tes = np.mean(rmse_test[:])
 		rmsetest_std = np.std(rmse_test[:])
+
 		outres = open(path+'/result.txt', "a+")
 		np.savetxt(outres, (rmse_tr, rmsetr_std, rmse_tes, rmsetest_std, accept_total), fmt='%1.5f')
 		print (rmse_tr, rmsetr_std, rmse_tes, rmsetest_std)
+
 		np.savetxt(resultingfile,(NumSample, maxtemp, swap_ratio, num_chains, rmse_tr, rmsetr_std, rmse_tes, rmsetest_std, accept_total))
 		ytestdata = testdata[:, ip]
 		ytraindata = traindata[:, ip]
