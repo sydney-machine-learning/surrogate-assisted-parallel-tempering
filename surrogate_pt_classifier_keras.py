@@ -949,7 +949,7 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 50000
+		NumSample = 5000
 		maxtemp = 20 
 		swap_ratio = 0.025
 		num_chains = 10
