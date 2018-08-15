@@ -287,6 +287,8 @@ class ptReplica(multiprocessing.Process):
 		s_pos_w = np.ones((samples, w_size)) #Surrogate Trainer
 		lhood_list = np.zeros((samples,1))
 		surrogate_list = np.zeros((samples,1))
+		surr_acc_train = []
+		surr_acc_test = []
 		fxtrain_samples = np.ones((samples, trainsize)) #Output of regression FNN for training samples
 		fxtest_samples = np.ones((samples, testsize)) #Output of regression FNN for testing samples
 		rmse_train  = np.zeros(samples)
@@ -376,16 +378,20 @@ class ptReplica(multiprocessing.Process):
 				accept_list.write('{} {} {} {} {} {} {}\n'.format(self.temperature,naccept, i, rmsetrain, rmsetest, diff_likelihood, diff_likelihood + diff_prior))
 				pos_w[i + 1,] = w_proposal
 				s_pos_w[i+1,] = w_proposal
-				if is_true_lhood == True:
-					lhood_list[i+1,] = (likelihood*self.temperature)
-				else:
-					lhood_list[i+1,] = np.inf
 				fxtrain_samples[i + 1,] = pred_train
 				fxtest_samples[i + 1,] = pred_test
 				rmse_train[i + 1,] = rmsetrain
 				rmse_test[i + 1,] = rmsetest
 				acc_train[i+1,] = self.accuracy(pred_train, y_train)
 				acc_test[i+1,] = self.accuracy(pred_test, y_test)
+				if is_true_lhood == True:
+					lhood_list[i+1,] = (likelihood*self.temperature)
+					surr_acc_train.append(acc_train[i+1,])
+					surr_acc_test.append(acc_test[i+1,])
+				else:
+					lhood_list[i+1,] = np.inf
+				
+
 				
 			else:
 				accept_list.write('{} x {} {} {} {} {}\n'.format(self.temperature, i, rmsetrain, rmsetest, likelihood, diff_likelihood + diff_prior))
@@ -440,6 +446,12 @@ class ptReplica(multiprocessing.Process):
 		plt.plot(acc_test, label="Test")
 		plt.legend()
 		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.png')
+		plt.close()
+		fig = plt.figure()
+		plt.plot(surr_acc_train, label="Train")
+		plt.plot(surr_acc_test, label="Test")
+		plt.legend()
+		plt.savefig(self.path+'/surr_accuracy'+str(self.temperature)+'.png')
 		plt.close()
 		########PLOTTING SURROGATES###############################################
 		# fig = plt.figure()
