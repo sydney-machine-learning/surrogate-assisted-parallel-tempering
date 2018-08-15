@@ -27,6 +27,14 @@ from sklearn.preprocessing import normalize
 import pickle
 #np.random.seed(1)
 
+
+from keras.models import Sequential
+from keras.layers import Activation, Dense, Dropout
+from keras.objectives import MSE, MAE
+from keras.callbacks import EarlyStopping
+from keras.models import model_from_json
+from keras.models import load_model
+
 class Network:
 
 	def __init__(self, Topo, Train, Test, learn_rate):
@@ -128,22 +136,43 @@ class Network:
 
 class surrogate: #General Class for surrogate models for predicting likelihood given the weights
 	
-	def __init__(self, model, X, Y, path):
+	#def __init__(self, model, X, Y, path): 
+	#	X = np.delete(X, indices, axis=0)
+	#	Y = np.delete(Y,indices, axis=0) 
+	#	self.Y = Y
+	#	self.X = X 
+	#	self.path = path
+	#	if model=="gp":
+	#		self.model_id = 1
+	#	else:
+	#		if model == "nn":
+	#			self.model_id = 2
+	#		else:
+	#			print("Invalid Model!")
+
+	def __init__(self, model, X, Y, min_X, max_X, min_Y , max_Y, path):
+		
+		self.path = path + '/surrogate'
 		indices = np.where(Y==np.inf)[0]
 		X = np.delete(X, indices, axis=0)
 		Y = np.delete(Y,indices, axis=0)
-		#print(X)
-		self.Y = Y
+		self.model_signature = 0.0
 		self.X = X
-		# self.Y, self.mean_Y, self.std_Y = self.normalize(Y)
-		self.path = path
+		self.Y = Y
+		self.min_Y = min_Y
+		self.max_Y =  max_Y
+		self.min_X = min_X
+		self.max_X = max_X
+
 		if model=="gp":
 			self.model_id = 1
+		elif model == "nn":
+			self.model_id = 2
+		elif model == "krnn":
+			self.model_id = 3
+			self.krnn = Sequential()
 		else:
-			if model == "nn":
-				self.model_id = 2
-			else:
-				print("Invalid Model!")
+			print("Invalid Model!")
 
 	def normalize(self, X):
 		maxer = np.zeros((1,X.shape[1]))
@@ -155,9 +184,10 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			X[:,i] = (X[:,i] - min(X[:,i]))/(max(X[:,i]) - min(X[:,i]))
 		return X, maxer, miner
 
-	def train(self):
+	def train(self, model_signature):
 		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
 		print(X_train.shape)
+		self.model_signature = model_signature
 		if self.model_id is 1:
 			ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
 			gp_load = GPy.models.GPRegression(X_train,y_train,ker)
@@ -193,28 +223,121 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			f.close()
 			print("After Training: MSE = ",mse," R squared score = ",r2)
 
-	def predict(self, X_load):
+
+		if self.model_id is 3:
+
+			if self.model_signature==1.0:
+				# krnn = Sequential()
+				self.krnn.add(Dense(64, input_dim=self.X.shape[1], kernel_initializer='uniform', activation='relu'))
+				# self.krnn.add(Dropout(0.5))
+				self.krnn.add(Dense(16, kernel_initializer='uniform', activation='relu'))
+				# self.krnn.add(Dropout(0.5))
+				self.krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))
+			else:
+				while True:	
+					try:
+						print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
+						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
+						break
+					except EnvironmentError as e:
+						pass
+						# print(e.errno)
+						# time.sleep(1)
+						# print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
+				
+			early_stopping = EarlyStopping(monitor='val_loss', patience=10)
+			self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
+			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=10, epochs=100, validation_split=0.1, verbose=2, callbacks=[early_stopping])
+
+			scores = self.krnn.evaluate(X_test, y_test.ravel(), verbose = 0)
+			print("%s: %.5f" % (self.krnn.metrics_names[1], scores[1]))
+		
+			self.krnn.save(self.path+'/model_krnn_%s_.h5' %self.model_signature)
+			print("Saved model to disk  ", self.model_signature)
+
+			plt.plot(train_log.history["loss"], label="loss")
+			plt.plot(train_log.history["val_loss"], label="val_loss")
+			# plt.show()
+			plt.savefig(self.path+'/%s_0.png'%(self.model_signature))
+
+			results = np.array([scores[1]])
+			make_directory(self.path+"/prediction_benchmark_data")
+			np.savetxt(self.path+'/Train_metrics.csv', results)
+			np.savetxt(self.path+'/prediction_benchmark_data/X_train.csv', X_train)
+			np.savetxt(self.path+'/prediction_benchmark_data/Y_train.csv', y_train)
+			np.savetxt(self.path+'/prediction_benchmark_data/X_test.csv', X_test)
+			np.savetxt(self.path+'/prediction_benchmark_data/Y_test.csv', y_test)
+
+	# def predict(self, X_load):
+	# 	if self.model_id == 1:
+	# 		fname = self.path + '/gp_params'
+	# 		ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
+	# 		gp_load = GPy.models.GPRegression(self.X, self.Y, initialize=False,kernel=ker)
+	# 		gp_load.update_model(False)
+	# 		gp_load.initialize_parameter()
+	# 		gp_load[:] = np.load('%s_gp_params.npy'%(fname))
+	# 		gp_load.update_model(True)
+	# 		return gp_load.predict(X_load)[0].ravel()[0]
+	# 	if self.model_id == 2:
+	# 		f = open(self.path+'/nn_params.pckl','rb+')
+	# 		[net]= pickle.load(f)
+	# 		f.close()
+	# 		# print(net.predict(X_load))
+	# 		# print(X_load)
+	# 		return (net.predict(X_load)[0])
+
+
+	def predict(self, X_load, initialized):
 		if self.model_id == 1:
-			fname = self.path + '/gp_params'
 			ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
 			gp_load = GPy.models.GPRegression(self.X, self.Y, initialize=False,kernel=ker)
 			gp_load.update_model(False)
 			gp_load.initialize_parameter()
-			gp_load[:] = np.load('%s_gp_params.npy'%(fname))
+			gp_load[:] = np.load('%s_gp_params.npy'%(self.path + '/gp_params'))
 			gp_load.update_model(True)
+			
 			return gp_load.predict(X_load)[0].ravel()[0]
+		
 		if self.model_id == 2:
 			f = open(self.path+'/nn_params.pckl','rb+')
-			[net]= pickle.load(f)
+			[net, self.max_Y, self.min_Y]= pickle.load(f)
 			f.close()
-			# print(net.predict(X_load))
-			# print(X_load)
-			return (net.predict(X_load)[0])
+			print('Output', net.predict(X_load)[0])
+			nn_prediction = net.predict(X_load)[0]
+			prediction =  net.predict(X_load)[0]*(self.max_Y[0,0]-self.min_Y[0,0]) + self.min_Y[0,0]
+			
+			return prediction
+
+		if self.model_id == 3:
+			
+			if initialized == False:
+				model_sign = np.loadtxt(self.path+'/model_signature.txt')
+				self.model_signature = model_sign 
+				while True:
+					try:
+						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%self.model_signature)
+						print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%self.model_signature)
+						break
+					except EnvironmentError as e:
+						pass
+						# IN CASE OF JUGAAR USE THIS:
+						# time.sleep(2)
+						# krnn = load_model(self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
+			
+				self.krnn.compile(loss='mse', optimizer='rmsprop', metrics=['mse'])
+				# krnn_prediction = krnn.predict(X_load)[0]
+				prediction = -1.0
+			
+			else:
+				krnn_prediction = self.krnn.predict(X_load)[0]
+				prediction = krnn_prediction*(self.max_Y[0,0]-self.min_Y[0,0]) + self.min_Y[0,0]
+
+			return prediction
 
 
 class ptReplica(multiprocessing.Process):
 
-	def __init__(self, w, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume):
+	def __init__(self, w,  minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume):
 		#MULTIPROCESSING VARIABLES
 		multiprocessing.Process.__init__(self)
 		self.processID = temperature
@@ -238,6 +361,13 @@ class ptReplica(multiprocessing.Process):
 		self.traindata = traindata
 		self.testdata = testdata
 		self.w = w
+
+		self.minY = np.zeros((1,1))
+		self.maxY = np.zeros((1,1))
+
+		self.minlim_param = minlim_param
+		self.maxlim_param = maxlim_param
+
 
 	def rmse(self, pred, actual):
 		return np.sqrt(((pred-actual)**2).mean())
@@ -324,48 +454,90 @@ class ptReplica(multiprocessing.Process):
 		accept_list = open(self.path+'/acceptlist_'+str(int(self.temperature*10))+'.txt', "a+")
 		trainacc = 0
 		testacc=0
+
+		prop_list = np.zeros((samples,w_proposal.size))
+		likeh_list = np.zeros((samples,2)) # one for posterior of likelihood and the other for all proposed likelihood
+		likeh_list[0,:] = [-100, -100] # to avoid prob in calc of 5th and 95th percentile later
+		surg_likeh_list = np.zeros((samples,2))
+
+
+
+
+
+
+
 		#Surrogate Init
+
+
+
+
+
+
+
+
+		surrogate_counter = 0
 		
-
 		for i in range(samples-1):
-			#GENERATING SAMPLE
-			w_proposal = np.random.normal(w, step_w, w_size) # Eq 7
 
-			#Surrogate or Likelihood Function randomly chosen to get likelihood for accepting/rejecting the proposals
-			kappa = random.uniform(0,1)
 			timer1 = time.time()
-			is_true_lhood = False
-			is_surr_lhood = False
-			if kappa<(1-self.surrogate_prob) or i<self.surrogate_interval+1:
-			# if True:
+			is_true_lhood = True
+ 
+			 
+			#is_surr_lhood = False 
+
+			# Update by perturbing all the  parameters via "random-walk" sampler 
+
+			w_proposal = np.random.normal(w, step_w, w_size)  
+
+
+			#[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
+ 
+
+			ku = random.uniform(0,1)
+			burnsamples = int(self.samples * self.burn_in)
+			if ku<self.surrogate_prob and i>=self.surrogate_interval+1 and i>burnsamples:
+				if surrogate_model == None:
+					minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
+					self.minY[0,0] = minmax[0]
+					self.maxY[0,0] = minmax[1]
+					surrogate_model = Surrogate("krnn",surrogate_X.copy(),surrogate_Y.copy(), self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path)
+					surrogate_likelihood = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]),False)
+					surrogate_likelihood = surrogate_likelihood *(1.0/self.temperature)
+						
+				elif self.surrogate_init == 0.0:
+					surrogate_likelihood = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
+					surrogate_likelihood = surrogate_likelihood *(1.0/self.temperature)
+				else:
+					surrogate_likelihood = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), True)
+					surrogate_likelihood = surrogate_likelihood *(1.0/self.temperature)
+
+				surg_likeh_list[i+1,0] = likelihood_proposal
+				surg_likeh_list[i+1,1] = surrogate_likelihood
+				print ('\nSample : ', i, ' Chain :', self.temperature, ' -A', likelihood_proposal, ' vs. P ', surrogate_likelihood)
+				surrogate_counter += 1
+
+				likelihood_proposal = surrogate_likelihood
+
+			else: 
+
 				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
-				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
-				is_true_lhood =  True
-				# print(self.temperature,i, 'true:', likelihood_proposal)
-			else:
-			# if i>self.surrogate_interval+1:
-				surrogate_model = surrogate("nn",surrogate_X.copy(),surrogate_Y.copy(),self.path)
-				pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w_proposal)
-				rmsetrain = self.rmse(pred_train,y_train)
-				pred_test, prob_test = fnn.evaluate_proposal(self.testdata,w_proposal)
-				rmsetest = self.rmse(pred_test,y_test)
-				is_surr_lhood = True
-				likelihood_proposal = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
-				# surrogate_list[i,] = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]))/self.temperature
-				# print(self.temperature,i, 'predicted', surrogate_list[i,])
-			#print(self.temperature, time.time() - timer1)
+				surg_likeh_list[i+1,0] = likelihood_proposal
+				surg_likeh_list[i+1,1] = np.nan
+
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
-			diff_prior = prior_prop - prior_current
+			
 			diff_likelihood = likelihood_proposal - likelihood
-			#ACCEPTANCE OF SAMPLE
-	
+
+			diff_prior = prior_prop - prior_current
 			try:
-				mh_prob = min(1, math.exp(diff_likelihood + diff_prior))
-			except OverflowError:
+				mh_prob = min(1, math.exp(diff_likelihood))
+			except OverflowError as e:
 				mh_prob = 1
 
 			u = random.uniform(0, 1)
 			
+			prop_list[i+1,] = w_proposal	
+			likeh_list[i+1,0] = likelihood_proposal
 
 			if u < mh_prob:
 				naccept  =  naccept + 1
@@ -387,8 +559,6 @@ class ptReplica(multiprocessing.Process):
 				acc_train[i+1,] = self.accuracy(pred_train, y_train)
 				acc_test[i+1,] = self.accuracy(pred_test, y_test)
 
-
-				
 			else:
 				accept_list.write('{} x {} {} {} {} {}\n'.format(self.temperature, i, rmsetrain, rmsetest, likelihood, diff_likelihood + diff_prior))
 				pos_w[i+1,] = pos_w[i,]
@@ -419,13 +589,39 @@ class ptReplica(multiprocessing.Process):
 					except:
 						print ('error')
 			#SURROGATE TRAINING
+			# if (i%self.surrogate_interval == 0) and (i!=0):
+			# 	#Train the surrogate with the posteriors and likelihood
+			# 	surrogate_X, surrogate_Y = s_pos_w[i+1-self.surrogate_interval:i,:],lhood_list[i+1-self.surrogate_interval:i,:]
+			# 	param = np.concatenate([s_pos_w[i+1-self.surrogate_interval:i,:],lhood_list[i+1-self.surrogate_interval:i,:]],axis=1)
+			# 	self.surrogate_parameterqueue.put(param)
+			# 	self.surrogate_start.set()
+			# 	self.surrogate_resume.wait()
+
 			if (i%self.surrogate_interval == 0) and (i!=0):
 				#Train the surrogate with the posteriors and likelihood
-				surrogate_X, surrogate_Y = s_pos_w[i+1-self.surrogate_interval:i,:],lhood_list[i+1-self.surrogate_interval:i,:]
-				param = np.concatenate([s_pos_w[i+1-self.surrogate_interval:i,:],lhood_list[i+1-self.surrogate_interval:i,:]],axis=1)
+				surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
+
+				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
+				param = np.concatenate([surrogate_X, surrogate_Y],axis=1)
 				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
 				self.surrogate_resume.wait()
+				
+				model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
+				self.model_signature = model_sign 
+				
+				if self.model_signature==1.0:
+					minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
+					self.minY[0,0] = minmax[0]
+					self.maxY[0,0] = minmax[1]
+					# print 'min ', self.minY, ' max ', self.maxY
+					dummy_X = np.zeros((1,1))
+					dummy_Y = np.zeros((1,1))
+					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path)
+				
+				self.surrogate_init = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)				
+				print("Surrogate init ", self.surrogate_init , " - should be -1")
+
 
 
 		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.temperature]),np.asarray([i])])
@@ -435,6 +631,7 @@ class ptReplica(multiprocessing.Process):
 		self.surrogate_parameterqueue.put(param)
 		make_directory(self.path+'/results')
 		make_directory(self.path+'/posterior')
+
 		print ((naccept*100 / (samples * 1.0)), '% was accepted')
 		accept_ratio = naccept / (samples * 1.0) * 100
 		fig = plt.figure()
@@ -504,6 +701,13 @@ class ParallelTempering:
 		self.surrchain_queue = multiprocessing.JoinableQueue()
 		self.all_param = None
 		self.geometric = True # True (geometric)  False (Linear)
+
+		self.minlim_param = 0.0
+		self.maxlim_param = 0.0
+		self.minY = np.zeros((1,1))
+		self.maxY = np.ones((1,1))
+
+		self.model_signature = 0.0
 
 	def default_beta_ladder(self, ndim, ntemps, Tmax): #https://github.com/konqr/ptemcee/blob/master/ptemcee/sampler.py
 		"""
@@ -620,13 +824,19 @@ class ParallelTempering:
 				print(self.temperatures[i])
 
 
-	def initialize_chains(self, burn_in):
+	def initialize_chains(self,  burn_in):
 		self.burn_in = burn_in
 		self.assign_temperatures()
+		self.minlim_param = np.repeat([-100] , self.num_param)  # priors for nn weights
+		self.maxlim_param = np.repeat([100] , self.num_param)
+
+		print(self.minlim_param)
+
+
 		w = np.random.randn(self.num_param)
 		
 		for i in range(0, self.num_chains):
-			self.chains.append(ptReplica(w,self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i]))
+			self.chains.append(ptReplica(w,  self.minlim_param, self.maxlim_param, self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i]))
 
 	def surr_procedure(self,queue):
 
@@ -650,11 +860,12 @@ class ParallelTempering:
 			#print('yo')
 			#SWAPPING PROBABILITIES
 			try:
-				swap_proposal =  min(1,0.5*np.exp(lhood2 - lhood1))
+				swap_proposal =  min(1,0.5*np.exp(min(709, lhood2 - lhood1)))
 			except OverflowError:
 				swap_proposal = 1
 			u = np.random.uniform(0,1)
 			if u < swap_proposal:
+				print ("Swapped")
 				self.total_swap_proposals += 1
 				self.num_swap += 1
 				param_temp =  param1
@@ -666,13 +877,55 @@ class ParallelTempering:
 			return
 
 	def surrogate_trainer(self,params):
+		#X = params[:,:self.num_param]
+		#Y = params[:,self.num_param].reshape(X.shape[0],1)
+		#indices = np.where(Y==np.inf)[0]
+		#X = np.delete(X, indices, axis=0)
+		#Y = np.delete(Y,indices, axis=0)
+		#surrogate_model = surrogate("nn",X,Y,self.path)
+		#surrogate_model.train()
+
+
 		X = params[:,:self.num_param]
 		Y = params[:,self.num_param].reshape(X.shape[0],1)
+		
+		for i in range(Y.shape[1]):
+			min_Y = min(Y[:,i])
+			max_Y = max(Y[:,i])
+			self.minY[0,i] = min_Y
+			self.maxY[0,i] = max_Y 
+
+		self.model_signature += 1.0
+		make_directory(self.path+'/surrogate')
+		if self.model_signature == 1.0:
+			np.savetxt(self.path+'/surrogate/minmax.txt',[self.minY[0, 0], self.maxY[0, 0]])
+		
+		np.savetxt(self.path+'/surrogate/model_signature.txt', [self.model_signature])
+		
+		Y= self.normalize_likelihood(Y)
 		indices = np.where(Y==np.inf)[0]
 		X = np.delete(X, indices, axis=0)
 		Y = np.delete(Y,indices, axis=0)
-		surrogate_model = surrogate("nn",X,Y,self.path)
-		surrogate_model.train()
+		surrogate_model = surrogate("krnn", X , Y , self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path)
+		surrogate_model.train(self.model_signature)
+
+
+	def normalize_likelihood(self, Y):
+		for i in range(Y.shape[1]):
+			if self.model_signature == 1.0:
+				min_Y = min(Y[:,i])
+				max_Y = max(Y[:,i])
+				# self.minY[0,i] = 1 #For Tau Squared
+				# self.maxY[0,i] = max_Y 
+				
+				self.maxY[0,i] = max_Y
+				self.minY[0,i] = min_Y
+
+			# Y[:,i] = ([:,i] - min_Y)/(max_Y - min_Y)
+			
+			Y[:,i] = (Y[:,i] - self.minY[0,0])/(self.maxY[0,0]-self.minY[0,0])
+
+		return Y	
 		
 	def plot_figure(self, list, title): 
 
@@ -881,7 +1134,7 @@ def make_directory (directory):
 
 def main():
 
-	for i in range(2, 4):
+	for i in range(7, 8):
 		problem = i
 		separate_flag = False
 		print(problem, ' problem')
@@ -969,11 +1222,11 @@ def main():
 
 		NumSample = 2000 
 		maxtemp = 20 
-		swap_ratio = 0.05
+		swap_ratio = 0.01
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 50  
+		surrogate_interval = 20  
 		surrogate_prob = 0.5
 
 
@@ -1015,6 +1268,7 @@ def main():
 
 
 
+
 		###############################
 		if surrogate_interval < swap_interval:
 			surrogate_interval = swap_interval
@@ -1035,10 +1289,16 @@ def main():
 		
 		timer = time.time()
 		#path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
-		test = 0
+		
 	
 		pt = ParallelTempering(traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path)
-		pt.initialize_chains(burn_in)
+
+
+
+ 
+
+
+		pt.initialize_chains(  burn_in)
 
 		pos_w, fx_train, fx_test, x_train, x_test, rmse_train, rmse_test, accept_total = pt.run_chains()
 
