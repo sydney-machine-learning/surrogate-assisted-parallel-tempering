@@ -1,5 +1,5 @@
 """ Feed Forward Network with Parallel Tempering for Multi-Core Systems"""
-
+X
 from __future__ import print_function, division
 import multiprocessing
 import os
@@ -1134,7 +1134,7 @@ def make_directory (directory):
 
 def main():
 
-	for i in range(7, 8):
+	for i in range(2, 3):
 		problem = i
 		separate_flag = False
 		print(problem, ' problem')
@@ -1222,7 +1222,7 @@ def main():
 
 		NumSample = 2000 
 		maxtemp = 20 
-		swap_ratio = 0.01
+		swap_ratio =  1
 		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
@@ -1372,7 +1372,7 @@ def main():
 		#dir()
 		gc.collect()
 		outres.close()
-		os.remove(path+'/nn_params.pckl')
-	resultingfile.close()
+		#os.remove(path+'/nn_params.pckl')
+		resultingfile.close()
 
 if __name__ == "__main__": main()
