@@ -865,7 +865,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [8]:
+	for i in [9]:
 		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -944,18 +944,32 @@ def main():
 			hidden = 25
 			ip = 6 #input
 			output = 18
+		if problem == 9: #Poker
+			traindata = np.genfromtxt('DATA/poker-hand-training-true.data',delimiter=',')
+			testdata = np.genfromtxt('DATA/poker-hand-testing.data',delimiter=',')
+			name = "Poker"
+			for k in range(10):
+				mean_train = np.mean(traindata[:,k])
+				dev_train = np.std(traindata[:,k]) 
+				traindata[:,k] = (traindata[:,k]-mean_train)/dev_train
+				mean_test = np.mean(testdata[:,k])
+				dev_test = np.std(testdata[:,k]) 
+				testdata[:,k] = (testdata[:,k]-mean_test)/dev_test
+			ip = 10
+			output = 10
+			hidden = 20
 		###############################
 		#THESE ARE THE HYPERPARAMETERS#
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 50000
+		NumSample = 5000
 		maxtemp = 20 
 		swap_ratio = 0.025
-		num_chains = 10
+		num_chains = 2
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 500
+		surrogate_interval = 50
 		surrogate_prob = 0.5
 		###############################
 		if surrogate_interval < swap_interval:
