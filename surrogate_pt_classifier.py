@@ -132,10 +132,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		indices = np.where(Y==np.inf)[0]
 		X = np.delete(X, indices, axis=0)
 		Y = np.delete(Y,indices, axis=0)
-		#print(X)
 		self.Y = Y
 		self.X = X
-		# self.Y, self.mean_Y, self.std_Y = self.normalize(Y)
 		self.path = path
 		if model=="gp":
 			self.model_id = 1
@@ -148,7 +146,6 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 	def normalize(self, X):
 		maxer = np.zeros((1,X.shape[1]))
 		miner = np.ones((1,X.shape[1]))
-
 		for i in range(X.shape[1]):
 			maxer[0,i] = max(X[:,i])
 			miner[0,i] = min(X[:,i])
@@ -158,7 +155,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 	def train(self):
 		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
 		print(X_train.shape)
-		if self.model_id is 1:
+		if self.model_id is 1: #Gaussian Process Training Using GPy Library
 			ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
 			gp_load = GPy.models.GPRegression(X_train,y_train,ker)
 			gp_load.update_model(False)
@@ -177,23 +174,23 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			
 			np.save('%s_gp_params.npy' % (fname), gp_load.param_array)
 			print("After Training: MSE = ",mse," R sqaured score = ",r2)
-		if self.model_id is 2:
-			#Neural Network for prediction
+		if self.model_id is 2: #Neural Network Training using Sci-kit Learn			
 			try:
-				[net]= pickle.load(open(self.path+'/nn_params.pckl','rb+'))
+				[net]= pickle.load(open(self.path+'/nn_params.pckl','rb+')) #For Retraining Purposes
 			except FileNotFoundError:
+				#Surrogate Model Architectures and HYPERPARAMETERS are choosable from here
 				net = MLPRegressor(hidden_layer_sizes=(350,17,),activation='relu',solver='adam',alpha=0.025, max_iter = 1000)
 			net.fit(X_train,y_train.ravel())
 			y_pred = net.predict(X_test)
 			print(y_pred)
 			mse = mean_squared_error(y_test.ravel(), y_pred.ravel())/(max(y_test)-min(y_test))
 			r2 = r2_score(y_test.ravel(), y_pred.ravel())
-			f = open(self.path+'/nn_params.pckl','wb+')
+			f = open(self.path+'/nn_params.pckl','wb+') # SAVE WEIGHTS
 			pickle.dump([net], f)
 			f.close()
-			print("After Training: MSE = ",mse," R squared score = ",r2)
+			print("After Training: MSE = ",mse," R squared score = ",r2) #Check Training on Validation Set
 
-	def predict(self, X_load):
+	def predict(self, X_load): #Called at Every Time the Algorithm wants to used predicted likelihood of the Surrogate Model
 		if self.model_id == 1:
 			fname = self.path + '/gp_params'
 			ker = GPy.kern.Matern52(input_dim = self.X.shape[1], lengthscale = 1., ARD=True) + GPy.kern.White(self.X.shape[1])
@@ -386,10 +383,11 @@ class ptReplica(multiprocessing.Process):
 				acc_test[i+1,] = self.accuracy(pred_test, y_test)
 				if is_true_lhood == True:
 					lhood_list[i+1,] = (likelihood*self.temperature)
-					surr_acc_train.append(acc_train[i+1,])
-					surr_acc_test.append(acc_test[i+1,])
+					
 				else:
 					lhood_list[i+1,] = np.inf
+					surr_acc_train.append(acc_train[i+1,])
+					surr_acc_test.append(acc_test[i+1,])
 				
 
 				
@@ -401,6 +399,8 @@ class ptReplica(multiprocessing.Process):
 					lhood_list[i+1,] = (likelihood_proposal*self.temperature)
 				else:
 					lhood_list[i+1,] = np.inf 
+					surr_acc_train.append(acc_train[i+1,])
+					surr_acc_test.append(acc_test[i+1,])
 				fxtrain_samples[i + 1,] = fxtrain_samples[i,]
 				fxtest_samples[i + 1,] = fxtest_samples[i,]
 				rmse_train[i + 1,] = rmse_train[i,]
@@ -441,12 +441,14 @@ class ptReplica(multiprocessing.Process):
 		make_directory(self.path+'/posterior')
 		print ((naccept*100 / (samples * 1.0)), '% was accepted')
 		accept_ratio = naccept / (samples * 1.0) * 100
+		###############PLOTTING ACCURACY####################################
 		fig = plt.figure()
 		plt.plot(acc_train, label="Train")
 		plt.plot(acc_test, label="Test")
 		plt.legend()
 		plt.savefig(self.path+'/accuracy'+str(self.temperature)+'.png')
 		plt.close()
+		##########PLOTTING SURROGATE ACCURACY####################################
 		fig = plt.figure()
 		plt.plot(surr_acc_train, label="Train")
 		plt.plot(surr_acc_test, label="Test")
@@ -645,7 +647,6 @@ class ParallelTempering:
 			eta2 = param2[self.num_param]
 			lhood2 = param2[self.num_param+1]
 			T2 = param2[self.num_param+2]
-			#print('yo')
 			#SWAPPING PROBABILITIES
 			try:
 				swap_proposal =  min(1,0.5*np.exp(lhood2 - lhood1))
@@ -877,7 +878,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [9]:
+	for i in [7]:
 		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -975,13 +976,13 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 5000
+		NumSample = 50000
 		maxtemp = 20 
 		swap_ratio = 0.025
-		num_chains = 2
+		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 50
+		surrogate_interval = 500
 		surrogate_prob = 0.5
 		###############################
 		if surrogate_interval < swap_interval:
