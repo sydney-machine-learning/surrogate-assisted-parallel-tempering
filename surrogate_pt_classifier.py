@@ -386,10 +386,11 @@ class ptReplica(multiprocessing.Process):
 				acc_test[i+1,] = self.accuracy(pred_test, y_test)
 				if is_true_lhood == True:
 					lhood_list[i+1,] = (likelihood*self.temperature)
-					surr_acc_train.append(acc_train[i+1,])
-					surr_acc_test.append(acc_test[i+1,])
+					
 				else:
 					lhood_list[i+1,] = np.inf
+					surr_acc_train.append(acc_train[i+1,])
+					surr_acc_test.append(acc_test[i+1,])
 				
 
 				
@@ -401,6 +402,8 @@ class ptReplica(multiprocessing.Process):
 					lhood_list[i+1,] = (likelihood_proposal*self.temperature)
 				else:
 					lhood_list[i+1,] = np.inf 
+					surr_acc_train.append(acc_train[i+1,])
+					surr_acc_test.append(acc_test[i+1,])
 				fxtrain_samples[i + 1,] = fxtrain_samples[i,]
 				fxtest_samples[i + 1,] = fxtest_samples[i,]
 				rmse_train[i + 1,] = rmse_train[i,]
@@ -877,7 +880,7 @@ def make_directory (directory):
 def main():
 	make_directory('RESULTS')
 	resultingfile = open('RESULTS/master_result_file.txt','a+')
-	for i in [9]:
+	for i in [7]:
 		problem = i
 		separate_flag = False
 		#DATA PREPROCESSING 
@@ -975,13 +978,13 @@ def main():
 		###############################
 		topology = [ip, hidden, output]
 
-		NumSample = 5000
+		NumSample = 50000
 		maxtemp = 20 
 		swap_ratio = 0.025
-		num_chains = 2
+		num_chains = 10
 		swap_interval = int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.2
-		surrogate_interval = 50
+		surrogate_interval = 500
 		surrogate_prob = 0.5
 		###############################
 		if surrogate_interval < swap_interval:
