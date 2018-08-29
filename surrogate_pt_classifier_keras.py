@@ -386,7 +386,7 @@ class ptReplica(multiprocessing.Process):
 		prior_current = self.prior_likelihood(sigma_squared, nu_1, nu_2, w)  # takes care of the gradients
 		#Evaluate Likelihoods
 		[likelihood, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w)
-		[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w)
+		[_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w)
 		#Beginning Sampling using MCMC RANDOMWALK
 		
 
@@ -480,8 +480,8 @@ class ptReplica(multiprocessing.Process):
 
 				likelihood_proposal = surrogate_likelihood[0]
 
-				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
-				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
+				[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
+				[_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w_proposal)
 			
 
 			else:  
@@ -489,7 +489,7 @@ class ptReplica(multiprocessing.Process):
 
 				#print('  -----------------          ******************                  USE Surrogate ')
 				[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
-				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
+				[_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w_proposal)
 				surg_likeh_list[i+1,0] = likelihood_proposal
 				surg_likeh_list[i+1,1] = np.nan
 
@@ -1274,7 +1274,7 @@ class ParallelTempering:
 
 def main():
 
-	for i in range(6, 9):
+	for i in range(5, 9):
 		problem = i
 		separate_flag = False
 		print(problem, ' problem')
@@ -1399,7 +1399,7 @@ def main():
 
 		netw = topology
 
-		NumSample =  2000
+		NumSample =  10000
 
 
 
