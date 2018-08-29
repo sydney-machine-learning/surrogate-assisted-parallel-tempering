@@ -197,7 +197,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			else:
 				while True:	
 					try:
-						print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
+						# print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
 						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
 						break
 					except EnvironmentError as e:
@@ -208,7 +208,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 				
 			early_stopping = EarlyStopping(monitor='val_loss', patience=10)
 			self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
-			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=10, epochs=50, validation_split=0.1, verbose=2, callbacks=[early_stopping])
+			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=10, epochs=10, validation_split=0.1, verbose=0, callbacks=[early_stopping])
 
 			scores = self.krnn.evaluate(X_test, y_test.ravel(), verbose = 0)
 			print("%s: %.5f" % (self.krnn.metrics_names[1], scores[1]))
@@ -248,20 +248,21 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 				while True:
 					try:
 						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%self.model_signature)
-						print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%self.model_signature)
+						# print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%self.model_signature)
 						break
 					except EnvironmentError as e:
 						pass 
 			
 				self.krnn.compile(loss='mse', optimizer='rmsprop', metrics=['mse'])
-				# krnn_prediction = krnn.predict(X_load)[0]
+				krnn_prediction =-1.0
 				prediction = -1.0
 			
 			else:
 				krnn_prediction = self.krnn.predict(X_load)[0]
+
 				prediction = krnn_prediction*(self.max_Y[0,0]-self.min_Y[0,0]) + self.min_Y[0,0]
 
-			return prediction
+			return prediction, krnn_prediction
 
 
 class ptReplica(multiprocessing.Process):
@@ -463,19 +464,19 @@ class ptReplica(multiprocessing.Process):
 					self.minY[0,0] = minmax[0]
 					self.maxY[0,0] = minmax[1]
 					surrogate_model = surrogate("krnn",surrogate_X.copy(),surrogate_Y.copy(), self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata)
-					surrogate_likelihood = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]),False)
+					surrogate_likelihood, nn_predict = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]),False)
 					surrogate_likelihood = surrogate_likelihood *(1.0/self.temperature)
 						
 				elif self.surrogate_init == 0.0:
-					surrogate_likelihood = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
+					surrogate_likelihood,  nn_predict = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
 					surrogate_likelihood = surrogate_likelihood *(1.0/self.temperature)
 				else:
-					surrogate_likelihood = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), True)
+					surrogate_likelihood,  nn_predict = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), True)
 					surrogate_likelihood = surrogate_likelihood *(1.0/self.temperature)
 
 				surg_likeh_list[i+1,0] = likelihood_proposal
 				surg_likeh_list[i+1,1] = surrogate_likelihood
-				print ('\nSample : ', i, ' Chain :', self.temperature, ' -A', likelihood_proposal, ' vs. P ', surrogate_likelihood)
+				print ('\nSample : ', i, ' Chain :', self.temperature, ' -A', likelihood_proposal, ' vs. P ', surrogate_likelihood, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
 				surrogate_counter += 1
 
 				likelihood_proposal = surrogate_likelihood[0]
@@ -554,7 +555,7 @@ class ptReplica(multiprocessing.Process):
 
 				
 
-				print (i,lhood_counter ,   likelihood, self.temperature, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted')
+				#print (i,lhood_counter ,   likelihood, self.temperature, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted')
 			
 
 			else:
@@ -624,7 +625,7 @@ class ptReplica(multiprocessing.Process):
 					dummy_Y = np.zeros((1,1))
 					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata )
 				
-				self.surrogate_init = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)				
+				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)				
 				print("Surrogate init ", self.surrogate_init , " - should be -1")
 
 
@@ -922,7 +923,7 @@ class ParallelTempering:
 			min_Y = min(Y[:,i])
 			max_Y = max(Y[:,i])
 			self.minY[0,i] = min_Y
-			self.maxY[0,i] = max_Y 
+			self.maxY[0,i] = -1#max_Y 
 
 		self.model_signature += 1.0 
 		if self.model_signature == 1.0:
@@ -946,7 +947,9 @@ class ParallelTempering:
 				# self.minY[0,i] = 1 #For Tau Squared
 				# self.maxY[0,i] = max_Y 
 				
-				self.maxY[0,i] = max_Y
+
+				# min -115 and max -96
+				self.maxY[0,i] = -1 #max_Y
 				self.minY[0,i] = min_Y
 
 			# Y[:,i] = ([:,i] - min_Y)/(max_Y - min_Y)
@@ -1274,7 +1277,7 @@ class ParallelTempering:
 
 def main():
 
-	for i in range(5, 9):
+	for i in range(6, 9):
 		problem = i
 		separate_flag = False
 		print(problem, ' problem')
@@ -1399,7 +1402,7 @@ def main():
 
 		netw = topology
 
-		NumSample =  10000
+		#NumSample =  20000
 
 
 
@@ -1421,7 +1424,7 @@ def main():
 		num_chains = 10
 		swap_interval = 15 # int(swap_ratio * (NumSample/num_chains)) #how ofen you swap neighbours
 		burn_in = 0.5
-		surrogate_interval = 50  
+		surrogate_interval = 400  
 		surrogate_prob = 0.5
 
 
@@ -1550,13 +1553,13 @@ def main():
 		plt.savefig(path+'/acc_samples.png') 
 		plt.clf()	
 
-		'''plt.plot(x, acc_train,'.', label='Test')
+		plt.plot(x, acc_train,'.', label='Test')
 		plt.plot(x, acc_test, '.', label='Train') 
 		plt.legend(loc='upper right')
 
 		plt.title("Plot of Classification Acc. over time")
 		plt.savefig(path_db+'/acc_samples.png') 
-		plt.clf()'''	
+		plt.clf()	
 
 		print(rmse_train.shape)
 		plt.plot(rmse_train[:, 0],'.', label='Train')
@@ -1567,6 +1570,15 @@ def main():
 		plt.savefig(path+'/rmse_samples.png') 
 		plt.clf()
 
+		plt.plot(rmse_train[:, 0],'.', label='Train')
+		plt.plot(rmse_test[:, 0], '.', label='Test') 
+		plt.legend(loc='upper right')
+
+		plt.title("Plot of EMSE over time")
+		plt.savefig(path_db+'/rmse_samples.png') 
+		plt.clf()
+
+
 
 
 		likelihood = likelihood_rep[:,0] # just plot proposed likelihood
@@ -1576,6 +1588,11 @@ def main():
 		plt.plot(likelihood.T)
 		plt.savefig(path+'/likelihood.png')
 		plt.clf()
+
+		plt.plot(likelihood.T)
+		plt.savefig(path_db+'/likelihood.png')
+		plt.clf()
+
 
 
 
