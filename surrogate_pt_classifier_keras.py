@@ -90,7 +90,6 @@ class Network:
 		self.B1 = w[w_layer1size + w_layer2size:w_layer1size + w_layer2size + self.Top[1]].reshape(1,self.Top[1])
 		self.B2 = w[w_layer1size + w_layer2size + self.Top[1]:w_layer1size + w_layer2size + self.Top[1] + self.Top[2]].reshape(1,self.Top[2])
 
-
 	def encode(self):
 		w1 = self.W1.ravel()
 		w2 = self.W2.ravel()
@@ -143,20 +142,6 @@ class Network:
 		return fx, prob
 
 class surrogate: #General Class for surrogate models for predicting likelihood given the weights
-	
-	#def __init__(self, model, X, Y, path): 
-	#	X = np.delete(X, indices, axis=0)
-	#	Y = np.delete(Y,indices, axis=0) 
-	#	self.Y = Y
-	#	self.X = X 
-	#	self.path = path
-	#	if model=="gp":
-	#		self.model_id = 1
-	#	else:
-	#		if model == "nn":
-	#			self.model_id = 2
-	#		else:
-	#			print("Invalid Model!")
 
 	def __init__(self, model, X, Y, min_X, max_X, min_Y , max_Y, path, save_surrogatedata):
 		
@@ -252,8 +237,6 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 				with open(('%s/learnsurrogate_data/Y_test.csv' % (self.path)),'ab') as outfile:
 					np.savetxt(outfile, y_test)
  
- 
-
 	def predict(self, X_load, initialized):
 		 
 
@@ -318,8 +301,6 @@ class ptReplica(multiprocessing.Process):
 
 
 		self.save_surrogatedata =  save_surrogatedata
- 
-
 
 	def rmse(self, pred, actual): 
 
@@ -346,7 +327,7 @@ class ptReplica(multiprocessing.Process):
 				if j == y[i]:
 					z[i,j] = 1
 				lhood += z[i,j]*np.log(prob[i,j])
-		return [lhood/self.temperature, fx, rmse]
+		return [lhood/self.temperature, fx, rmse, lhood]
 
 	def prior_likelihood(self, sigma_squared, nu_1, nu_2, w):
 		h = self.topology[1]  # number hidden neurons
@@ -368,8 +349,6 @@ class ptReplica(multiprocessing.Process):
 		y_test = self.testdata[:,netw[0]]
 		y_train = self.traindata[:,netw[0]]
 
-
-		
 		w_size = (netw[0] * netw[1]) + (netw[1] * netw[2]) + netw[1] + netw[2]  # num of weights and bias
 		pos_w = np.ones((samples, w_size)) #Posterior for all weights
 		s_pos_w = np.ones((samples, w_size)) #Surrogate Trainer
@@ -406,7 +385,7 @@ class ptReplica(multiprocessing.Process):
 		delta_likelihood = 0.5 # an arbitrary position
 		prior_current = self.prior_likelihood(sigma_squared, nu_1, nu_2, w)  # takes care of the gradients
 		#Evaluate Likelihoods
-		[likelihood, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w)
+		[likelihood, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w)
 		[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w)
 		#Beginning Sampling using MCMC RANDOMWALK
 		
@@ -509,7 +488,7 @@ class ptReplica(multiprocessing.Process):
 				is_true_lhood = True
 
 				#print('  -----------------          ******************                  USE Surrogate ')
-				[likelihood_proposal, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w_proposal)
+				[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w_proposal)
 				surg_likeh_list[i+1,0] = likelihood_proposal
 				surg_likeh_list[i+1,1] = np.nan
@@ -536,7 +515,7 @@ class ptReplica(multiprocessing.Process):
 			u = random.uniform(0, 1)
 			
 			prop_list[i+1,] = w_proposal	
-			likeh_list[i+1,0] = likelihood_proposal
+			likeh_list[i+1,0] = likl_without_temp
 
 			if u < mh_prob:
 				naccept  =  naccept + 1
