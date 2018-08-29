@@ -92,7 +92,7 @@ class Surrogate(object):
         plt.clf()
 
     def read_min_max(self, display=True):
-        with open(path+'/../minmax.txt', 'r') as file:
+        with open(path+'/minmax.txt', 'r') as file:
             min_Y = float(file.readline())
             max_Y = float(file.readline())
         if display == True:
@@ -107,14 +107,14 @@ class Surrogate(object):
 
 ##########################################################################
 if __name__ == '__main__':
-    problems = ['etopo', 'crater', 'mountain']
+    problems = ['iris', 'cancer' ]
     batch_ratios = np.linspace(0.1, 0.5, 5)
     dropout_values = np.linspace(0.0, 0.5, 5)
     for ratio in batch_ratios:
         for dropout in dropout_values[:1]:
             for problem in problems:
                 # Parameters for data
-                problem_paths = {'etopo':'etopo_fast_5000/surrogate/prediction_benchmark_data', 'crater':'crater_5000/surrogate/prediction_benchmark_data', 'mountain':'mountain_5000/surrogate/prediction_benchmark_data'}
+                problem_paths = {'iris':'iris', 'cancer':'cancer' }
                 num_batches = 5
                 path = problem_paths[problem]
                 #################################

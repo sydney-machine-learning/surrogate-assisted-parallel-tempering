@@ -1295,7 +1295,7 @@ class ParallelTempering:
 
 def main():
 
-	for i in range(4, 5):
+	for i in range(6, 9):
 		problem = i
 		separate_flag = False
 		print(problem, ' problem')
@@ -1420,7 +1420,7 @@ def main():
 
 		netw = topology
 
-		NumSample =  10000
+		NumSample =  2000
 
 
 
@@ -1487,7 +1487,7 @@ def main():
 
 		use_surrogate = True # if you set this to false, you get canonical PT
 
-		save_surrogatedata = True # just to save surrogate data for analysis - set false since it will gen lots data
+		save_surrogatedata = False # just to save surrogate data for analysis - set false since it will gen lots data
   
   
 		timer = time.time()
