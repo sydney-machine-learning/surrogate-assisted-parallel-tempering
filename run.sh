@@ -2,7 +2,10 @@
 #!/bin/sh 
 echo Running all 	 
  
-python surrogate_pt_classifier_keras.py 6 2000
+#python surrogate_pt_classifier_keras.py 6 2000
+
+
+python surrogate_pt_classifierfile.py 5 2000
 
 
 #python surrogate_pt_classifier_keras.py 6 50000 

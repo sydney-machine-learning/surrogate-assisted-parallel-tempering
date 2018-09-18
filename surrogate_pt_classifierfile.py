@@ -426,6 +426,9 @@ class ptReplica(multiprocessing.Process):
  
 
 		surrogate_counter = 0
+
+
+		file_surr = self.path+'/posterior/surr_w/'+'chain_'+ str(self.temperature)+ '.txt'
 		
 		for i in range(samples-1):
 
@@ -639,8 +642,11 @@ class ptReplica(multiprocessing.Process):
 				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
 				param = np.concatenate([surrogate_X, surrogate_Y],axis=1)
 
-				'''print (param, ' is param ')
-				self.surrogate_parameterqueue.put(param)
+
+				np.savetxt(file_surr,param )
+
+				print (param, ' is param ')
+				#self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
 				self.surrogate_resume.wait() 
 				
@@ -658,7 +664,7 @@ class ptReplica(multiprocessing.Process):
 					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata )
 				 
 				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)				
-				print("Surrogate init ", self.surrogate_init , " - should be -1") '''
+				print("Surrogate init ", self.surrogate_init , " - should be -1")  
 
 
 
@@ -1038,6 +1044,16 @@ class ParallelTempering:
 		for j in range(0,self.num_chains):        
 			self.chains[j].start()
 		#SWAP PROCEDURE
+
+		#sur_size = int(self.NumSamples/self.num_chains * 0.1)
+
+
+		#print(sur_size, ' sur_size')
+
+
+		surrogate_w = np.zeros((self.num_chains, self.surrogate_interval-1, self.num_param+1)) 
+
+		print(surrogate_w)
 		
 		while True:
 			for k in range(0,self.num_chains):
@@ -1067,13 +1083,25 @@ class ParallelTempering:
 			count = 0
 			# Surrogate's Events:
 
+
+
+		 
+			for k in range(0,self.num_chains):
+				self.surrogate_start_events[k].wait()
+
+			for i in range(self.num_chains):
+				file_name = self.path+'/posterior/surr_w/'+'chain_'+ str(self.temperatures[i])+ '.txt'
+				dat = np.loadtxt(file_name) 
+				surrogate_w[i,:,:] = dat
+
+			#print(surrogate_w, ' surrogate_w')  
+
  
 			
 			for k in range(0,self.num_chains):
-				self.surrogate_start_events[k].wait()
-			for k in range(0,self.num_chains):
 				self.surrchain_queue.put(self.surr_procedure(self.surrogate_parameterqueues[k]))
-				params = None
+				'''
+				params = None 
 				while True:
 					if self.surrchain_queue.empty():
 						self.surrchain_queue.task_done()
@@ -1087,7 +1115,9 @@ class ParallelTempering:
 						#print(k,'No Process')
 						break
 				if params is not None:
-					 all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([ all_param,params],axis=0)) #could be bug
+					 #all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([ all_param,params],axis=0)) #could be bug
+					 '''
+			all_param =  surrogate_w.transpose(2,0,1).reshape(self.num_param+1,-1)  
 
 					#print(self.all_param, ' all_param')
 
@@ -1443,7 +1473,7 @@ def main():
 
 
 	maxtemp = 4 
-	num_chains = 10
+	num_chains = 4
 	swap_interval = 10 #  #how ofen you swap neighbours
 	burn_in = 0.1
 	surrogate_interval = int(0.1 * (NumSample/num_chains))
@@ -1497,7 +1527,7 @@ def main():
 
 	pt = ParallelTempering(use_surrogate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db)
 
-	directories = [  path+'/predictions/', path+'/posterior', path+'/results', path+'/surrogate', path+'/surrogate/learnsurrogate_data', path+'/posterior/pos_w',  path+'/posterior/pos_likelihood',path+'/posterior/surg_likelihood',path+'/posterior/accept_list'  ]
+	directories = [  path+'/predictions/', path+'/posterior', path+'/results', path+'/surrogate', path+'/surrogate/learnsurrogate_data',  path+'/posterior/surr_w', path+'/posterior/pos_w',  path+'/posterior/pos_likelihood',path+'/posterior/surg_likelihood',path+'/posterior/accept_list'  ]
 
 	for d in directories:
 		pt.make_directory((filename)+ d)	
