@@ -393,6 +393,8 @@ class ptReplica(multiprocessing.Process):
 		[likelihood, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w)
 		[_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w)
 		#Beginning Sampling using MCMC RANDOMWALK
+
+		likelihood_copy = likelihood
 		
 
 		#accept_list = open(self.path+'/acceptlist_'+str(int(self.temperature*10))+'.txt', "a+")
@@ -503,7 +505,7 @@ class ptReplica(multiprocessing.Process):
 
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 			
-			diff_likelihood = likelihood_proposal - likelihood
+			diff_likelihood = likelihood_proposal -   likelihood_copy # (lhood_list[i,]  /self.temperature)  #
 
 			diff_prior = prior_prop - prior_current
 			try:
@@ -529,6 +531,7 @@ class ptReplica(multiprocessing.Process):
 			if u < mh_prob:
 				naccept  =  naccept + 1
 				likelihood = likelihood_proposal
+				likelihood_copy = likelihood_proposal
 				prior_current = prior_prop
 				w = w_proposal
 					 
@@ -548,7 +551,7 @@ class ptReplica(multiprocessing.Process):
 
 					lhood_counter = lhood_counter + 1
 
-					print (i,lhood_counter ,   likelihood, self.temperature, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted')
+					print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.temperature, 'accepted')
 
  
 
@@ -571,7 +574,9 @@ class ptReplica(multiprocessing.Process):
 
 					lhood_counter_inf = lhood_counter_inf + 1
 
-					print (i,lhood_counter ,   likelihood, self.temperature, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted sur')
+					#print (i,lhood_counter ,   likelihood, self.temperature,   acc_train[i+1,], acc_test[i+1,],  'accepted sur')
+					print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.temperature, '  not accepted')
+
 			
 
 			else:       
@@ -591,7 +596,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-					print (i,lhood_counter ,  acc_train[i,], acc_train[lhood_counter,]  ,  likelihood, self.temperature, rmsetrain, rmsetest, acc_train[lhood_counter,], acc_test[lhood_counter,],  'accepted  true-lhood ')
+					print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.temperature, 'rejected  true-lhood ')
 				else:
 					lhood_list[i+1,] = np.inf 
 
@@ -638,8 +643,7 @@ class ptReplica(multiprocessing.Process):
 
 				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
 				param = np.concatenate([surrogate_X, surrogate_Y],axis=1)
-
-				'''print (param, ' is param ')
+ 
 				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
 				self.surrogate_resume.wait() 
@@ -658,7 +662,7 @@ class ptReplica(multiprocessing.Process):
 					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata )
 				 
 				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)				
-				print("Surrogate init ", self.surrogate_init , " - should be -1") '''
+				print("Surrogate init ", self.surrogate_init , " - should be -1") 
 
 
 
@@ -1444,19 +1448,19 @@ def main():
 
 	maxtemp = 4 
 	num_chains = 10
-	swap_interval = 10 #  #how ofen you swap neighbours
-	burn_in = 0.1
-	surrogate_interval = int(0.1 * (NumSample/num_chains))
+	swap_interval = 1000  #  #how ofen you swap neighbours
+	burn_in = 0.6
+	surrogate_interval = int(0.2 * (NumSample/num_chains))
 
-	surrogate_prob = 0  
+	surrogate_prob = 0 
 	use_surrogate = False # if you set this to false, you get canonical PT - also make surrogate prob 0
 
 
 
 
-	problemfolder = '/home/rohit/Desktop/SurrogatePT/SurrogateResults_/'  # change this to your directory for results output - produces large datasets
+	problemfolder = '/home/rohit/Desktop/SurrogatePT/SurrogateResultsWed/'  # change this to your directory for results output - produces large datasets
 
-	problemfolder_db = 'SurrogateResults_/'  # save main results
+	problemfolder_db = 'SurrogateResultsWed/'  # save main results
 
 
 
