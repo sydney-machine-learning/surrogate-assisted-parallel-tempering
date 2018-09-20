@@ -305,7 +305,7 @@ class ptReplica(multiprocessing.Process):
 
 		self.save_surrogatedata =  save_surrogatedata
 
-		self.compare_surrogate  = True
+		self.compare_surrogate  = False
 
 	def rmse(self, pred, actual): 
 
@@ -1304,7 +1304,7 @@ class ParallelTempering:
 def main():
 
 
-	if(len(sys.argv)!=3):
+	if(len(sys.argv)!=4):
 		sys.exit('not right input format. give problem num [1 - 8] ')
 
  
@@ -1312,6 +1312,9 @@ def main():
 	problem = int(sys.argv[1])  # get input
 
 	Samples = int(sys.argv[2])
+
+
+	surrogate_prob = float(sys.argv[3])
 
 	print(problem, ' problem')
 
@@ -1448,19 +1451,19 @@ def main():
 
 	maxtemp = 4 
 	num_chains = 10
-	swap_interval = 1000  #  #how ofen you swap neighbours
+	swap_interval = 100000  #  #how ofen you swap neighbours
 	burn_in = 0.6
-	surrogate_interval = int(0.2 * (NumSample/num_chains))
+	surrogate_interval = int(0.1 * (NumSample/num_chains))
 
-	surrogate_prob = 0 
-	use_surrogate = False # if you set this to false, you get canonical PT - also make surrogate prob 0
-
-
+	#surrogate_prob = 0.5 
+	use_surrogate = True # if you set this to false, you get canonical PT - also make surrogate prob 0
 
 
-	problemfolder = '/home/rohit/Desktop/SurrogatePT/SurrogateResultsWed/'  # change this to your directory for results output - produces large datasets
 
-	problemfolder_db = 'SurrogateResultsWed/'  # save main results
+
+	problemfolder = '/home/rohit/Desktop/SurrogatePT/SurrogateResults_Surprob/'  # change this to your directory for results output - produces large datasets
+
+	problemfolder_db = 'SurrogateResults_Surprob/'  # save main results
 
 
 
@@ -1470,7 +1473,7 @@ def main():
 	while os.path.exists( problemfolder+name+'_%s' % (run_nb)):
 		run_nb += 1
 	if not os.path.exists( problemfolder+name+'_%s' % (run_nb)):
-		os.makedirs(  problemfolder+name+'_%s' % (run_nb))
+		os.makedirs(  problemfolder+name+'_%s' % (run_nb)) 
 		path = (problemfolder+ name+'_%s' % (run_nb))
 
 	filename = ""
@@ -1556,12 +1559,12 @@ def main():
 	print (  acc_tr, acctr_max, acc_tes, acctes_max, '   acc_tr, acctr_max, acc_tes, acctes_max ')  
 	print (  rmse_tr,   rmsetr_max, rmse_tes,   rmsetes_max ,  rmse_surr ,  '   rmse_tr,   rmsetr_max, rmse_tes,   rmsetes_max   rmse_surr  ')  
 
-	np.savetxt(resultingfile,(NumSample, maxtemp, swap_interval, num_chains, rmse_tr, rmsetr_std, rmsetr_max, rmse_tes, rmsetest_std, rmsetes_max, rmse_surr ), fmt='%1.2f')
+	np.savetxt(resultingfile,(surrogate_prob, NumSample, maxtemp, swap_interval, num_chains, rmse_tr, rmsetr_std, rmsetr_max, rmse_tes, rmsetest_std, rmsetes_max, rmse_surr ), fmt='%1.2f')
 
 
 	outres_db = open(path_db+'/result.txt', "a+")
 	np.savetxt(outres_db, (  acc_tr, acctr_std, acctr_max, acc_tes, acctest_std, acctes_max, swap_perc, timetotal,  rmse_surr ), fmt='%1.2f') 
-	np.savetxt(resultingfile_db,(NumSample, maxtemp, swap_interval, num_chains,  rmse_tr, rmsetr_std, rmsetr_max, rmse_tes, rmsetest_std, rmsetes_max , rmse_surr), fmt='%1.2f')
+	np.savetxt(resultingfile_db,(surrogate_prob, NumSample, maxtemp, swap_interval, num_chains,  rmse_tr, rmsetr_std, rmsetr_max, rmse_tes, rmsetest_std, rmsetes_max , rmse_surr), fmt='%1.2f')
 
 
 
