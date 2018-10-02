@@ -468,7 +468,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		pt_samples = samples * 0.75# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
+		pt_samples = samples * 0.6# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
 
 
 
@@ -499,8 +499,8 @@ class ptReplica(multiprocessing.Process):
 
 			if i == pt_samples and init_count ==0: # move to MCMC canonical
 				self.adapttemp = 1  
-				[likelihood, pred_train, rmsetrain] = self.likelihood_func(fnn, self.traindata, w)
-				[_, pred_test, rmsetest] = self.likelihood_func(fnn, self.testdata, w)
+				[likelihood, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w)
+				[_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w)
 				init_count = 1
 
   
@@ -620,7 +620,7 @@ class ptReplica(multiprocessing.Process):
 
 					lhood_counter = lhood_counter + 1
 
-					print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+					print (i, self.adapttemp, lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
  
 
@@ -644,7 +644,7 @@ class ptReplica(multiprocessing.Process):
 					lhood_counter_inf = lhood_counter_inf + 1
 
 					#print (i,lhood_counter ,   likelihood, self.adapttemp,   acc_train[i+1,], acc_test[i+1,],  'accepted sur')
-					print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
+					#print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
 
 			
 
@@ -665,7 +665,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-					print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
+					#print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
 				else:
 					lhood_list[i+1,] = np.inf 
 
@@ -685,7 +685,7 @@ class ptReplica(multiprocessing.Process):
 					reject_counter_inf = reject_counter_inf + 1
 
 
-					print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
+					#print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
 
 
 
@@ -1644,7 +1644,7 @@ def main():
 	xv = name+'_'+ str(run_nb) 
 
 	print (  acc_tr, acctr_max, acc_tes, acctes_max)  
-	allres =  np.asarray([ problem, NumSample, maxtemp, swap_interval, surrogate_intervalratio, surrogate_prob,  use_langevin_gradients, learn_rate, acc_tr, acctr_std, acctr_max, acc_tes, acctest_std, acctes_max, swap_perc, accept, timetotal]) 
+	allres =  np.asarray([ problem, NumSample, maxtemp, swap_interval, surrogate_intervalratio, surrogate_prob,  use_langevin_gradients, learn_rate, acc_tr, acctr_std, acctr_max, acc_tes, acctest_std, acctes_max, swap_perc, accept, rmse_surr, timetotal]) 
 	 
 	np.savetxt(outres_db,  allres   , fmt='%1.2f', newline=' '  )   
 	np.savetxt(resultingfile_db,   allres   , fmt='%1.2f',  newline=' ' ) 
