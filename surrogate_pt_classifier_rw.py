@@ -18,6 +18,10 @@ import matplotlib.ticker as mtick
 plt.rcParams['xtick.labelsize'] = 12 
 plt.rcParams['ytick.labelsize'] = 12
 
+params = {'legend.fontsize': 12,
+          'legend.handlelength': 2}
+plt.rcParams.update(params)
+
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from scipy.stats import multivariate_normal
@@ -231,6 +235,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 					try:
 						# print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
 						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
+						#self.krnn = self.create_model(self.dropout)
+               
 						break
 					except EnvironmentError as e:
 						pass
@@ -1613,10 +1619,7 @@ def main():
 
 	timetotal = (timer2 - timer) /60
 	print ((timetotal), 'min taken')
-
-	print(acc_train, ' acc_train')
-
-
+ 
 
 
 	x_index = np.where(acc_train==np.inf)  
@@ -1655,18 +1658,20 @@ def main():
 
 
 	x = np.arange(0, surrgate_intervalres.shape[0], 1)
+	x = x.astype(int)
 	ax.bar(x, surrgate_intervalres  ) 
-	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
+	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e')) 
+	ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.1f'))
 	ax.set_xlim((0, surrgate_intervalres.shape[0])) 
-	ax.set_xlabel('Surrogate intetrval', fontsize=16) 
-	ax.set_ylabel('RMSE', fontsize=16)
+	ax.set_xlabel('Surrogate interval', fontsize=14) 
+	ax.set_ylabel('RMSE', fontsize=14)
 	#ax.yaxis.set_label_coords(-0.1,1.02)
 	#ax.yaxis.set_ticks_position('bottom')
 
 	#plt.xlabel('Surrogate Interval ID', fontsize=18)
 	#plt.ylabel(' RMSE', fontsize=18)
 	#plt.legend(loc='upper right') 
-	plt.savefig(path_db+'/surrogate_intervalerror.png', fontsize=16) 
+	plt.savefig(path_db+'/surrogate_intervalerror.png' ) 
 
 
 	surr_meantrain = np.mean(surrgate_intervalres)
@@ -1687,20 +1692,20 @@ def main():
 	 
 	np.savetxt(outres_db,  allres   , fmt='%1.2f', newline=' '  )   
 	np.savetxt(resultingfile_db,   allres   , fmt='%1.2f',  newline=' ' ) 
-	np.savetxt(resultingfile_db, (surr_meantrain, surr_stdtrain), fmt='%1.7f',   newline=' ' )   
+	np.savetxt(resultingfile_db, (surr_meantrain, surr_stdtrain), fmt='%1.2e',   newline=' ' )   
 	np.savetxt(resultingfile_db, [xv]   ,  fmt="%s", newline=' \n' )   
 
 	np.savetxt(outres,  allres   , fmt='%1.2f', newline=' '  )   
 	np.savetxt(resultingfile,   allres   , fmt='%1.2f',  newline=' ' ) 
-	np.savetxt(resultingfile, (surr_meantrain, surr_stdtrain)  ,  fmt='%1.7f',  newline=' ' )  
+	np.savetxt(resultingfile, (surr_meantrain, surr_stdtrain)  ,  fmt='%1.2e',  newline=' ' )  
 	np.savetxt(resultingfile, [xv]   ,  fmt="%s", newline=' \n' )   
 
 
 
 	plt.plot(acc_train,  label='Test' )
 	plt.plot(acc_test,   label='Train' ) 
-	plt.xlabel('Samples', fontsize=16)
-	plt.ylabel(' Accuracy (%)', fontsize=16)
+	plt.xlabel('Samples', fontsize=14)
+	plt.ylabel(' Accuracy (%)', fontsize=14)
 	plt.legend(loc='upper right')
 
 	plt.savefig(path+'/acc_samples.png') 
@@ -1712,8 +1717,8 @@ def main():
 	plt.plot(rmse_train[:, 0],  label='Train')
 	plt.plot(rmse_test[:, 0],   label='Test') 
 
-	plt.xlabel('Samples', fontsize=16)
-	plt.ylabel(' RMSE', fontsize=16)
+	plt.xlabel('Samples', fontsize=14)
+	plt.ylabel(' RMSE', fontsize=14)
 	plt.legend(loc='upper right')
 
 	plt.savefig(path+'/rmse_samples.png') 
@@ -1728,9 +1733,9 @@ def main():
 	likelihood = np.asarray(np.split(likelihood, num_chains))
 
 # Plots
-	plt.plot(likelihood.T, label='True Log-Likelihood') 
-	plt.xlabel('Samples', fontsize=16)
-	plt.ylabel('Log-Likelihood', fontsize=16)
+	plt.plot(likelihood.T ) 
+	plt.xlabel('Samples', fontsize=14)
+	plt.ylabel('Log-Likelihood', fontsize=14)
 
 	plt.legend(loc='upper left')
 	plt.savefig(path+'/likelihood.png') 
@@ -1743,10 +1748,10 @@ def main():
 	list_surrogate = list_surrogate.T
  
 
-	plt.plot(list_true[0:pt_samples, 0:3  ],   label='True Log-Likelihood' )
-	plt.plot(list_surrogate[0:pt_samples, 0:3 ], '.',   label='Surrogate Log-Likelihood' )  
-	plt.xlabel('Samples', fontsize=16)
-	plt.ylabel('Log-Likelihood', fontsize=16)
+	plt.plot(list_true[0:pt_samples, 0:3  ],   label='True' )
+	plt.plot(list_surrogate[0:pt_samples, 0:3 ], '.',   label='Surrogate' )  
+	plt.xlabel('Samples', fontsize=14)
+	plt.ylabel('Log-Likelihood', fontsize=14)
 	#plt.xticks(fontsize=14)
 
 	plt.legend(loc='upper right')
@@ -1754,10 +1759,10 @@ def main():
 	plt.savefig(path_db+'/surr_likelihood.png')
 	plt.clf()
 
-	plt.plot(list_true[pt_samples+1:, 0:3  ],   label='True Log-Likelihood' )
-	plt.plot(list_surrogate[pt_samples+1:, 0:3 ], '.',   label='Surrogate Log-Likelihood' )  
-	plt.xlabel('Samples', fontsize=16)
-	plt.ylabel('Likelihood', fontsize=16)
+	plt.plot(list_true[pt_samples+1:, 0:3  ],   label='True' )
+	plt.plot(list_surrogate[pt_samples+1:, 0:3 ], '.',   label='Surrogate' )  
+	plt.xlabel('Samples', fontsize=14)
+	plt.ylabel('Likelihood', fontsize=14)
 
 	plt.legend(loc='upper right')
 	plt.savefig(path+'/surr_likelihood_.png') 
