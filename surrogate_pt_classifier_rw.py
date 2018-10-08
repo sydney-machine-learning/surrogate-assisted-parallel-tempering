@@ -1327,23 +1327,16 @@ class ParallelTempering:
 
 			slen = np.arange(0,surrogate_likl.shape[0],1)
 			fig = plt.figure(figsize = (12,12))
-			ax = fig.add_subplot(111)
-			ax.set_facecolor('#f2f2f3')
+			ax = fig.add_subplot(111) 
+			plt.tick_params(labelsize=25)
 
-
-			plt.rcParams['xtick.labelsize'] = 16
-			plt.rcParams['ytick.labelsize'] = 16 
-			params = {'legend.fontsize': 16,'legend.handlelength': 2}
+			params = {'legend.fontsize': 25, 'legend.handlelength': 2}
 			plt.rcParams.update(params)
-			surrogate_plot = ax.plot(slen,surrogate_likl[:,1],linestyle='-', linewidth= 1, color= 'b', label= 'Surrogate Likelihood')
-			model_plot = ax.plot(slen,surrogate_likl[:,0],linestyle= '--', linewidth = 1, color = 'k', label = 'True Likelihood')
-			ax.set_xlabel('Combined samples for all replica ',size= 16)
-			ax.set_ylabel(' Likelihood', size= 16)
-			ax.set_xlim([0,np.amax(slen)])
-			#ax.legend((surrogate_plot, model_plot),('Surrogate', 'True'))
-
-
-
+			surrogate_plot = ax.plot(slen,surrogate_likl[:,1],linestyle='-', linewidth= 1, color= 'b', label= 'Surrogate ')
+			model_plot = ax.plot(slen,surrogate_likl[:,0],linestyle= '--', linewidth = 1, color = 'k', label = 'True')
+			ax.set_xlabel('Samples per Replica [R-1, R-2 ..., R-N] ',size= 25)
+			ax.set_ylabel(' Log-Likelihood', size= 25)
+			ax.set_xlim([0,np.amax(slen)]) 
 			ax.legend(loc='best')
 			fig.tight_layout()
 			fig.subplots_adjust(top=0.88)
@@ -1646,23 +1639,24 @@ def main():
 	# print(surrgate_intervalres, ' surrgate_intervalres')
 
 	fig = plt.figure()
-	ax = fig.add_subplot(111)
+	#ax = fig.add_subplot(111)
 
 
 
 	x = np.arange(0, surrgate_intervalres.shape[0], 1)
-	x = x.astype(int)
-	ax.bar(x, surrgate_intervalres  )
-	ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
-	ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.1f'))
-	ax.set_xlim((0, surrgate_intervalres.shape[0]))
-	ax.set_xlabel('Surrogate interval', fontsize=14)
-	ax.set_ylabel('RMSE', fontsize=14)
+	#x = x.astype(int)
+	#ax.bar(x, surrgate_intervalres  )
+	#ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
+	#ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.1f'))
+	#ax.set_xlim((0, surrgate_intervalres.shape[0]))
+	#ax.set_xlabel('Surrogate interval', fontsize=14)
+	#ax.set_ylabel('RMSE', fontsize=14)
 	#ax.yaxis.set_label_coords(-0.1,1.02)
 	#ax.yaxis.set_ticks_position('bottom')
 
-	#plt.xlabel('Surrogate Interval ID', fontsize=18)
-	#plt.ylabel(' RMSE', fontsize=18)
+	plt.bar(x,surrgate_intervalres,  label='Test' )
+	plt.xlabel('Surrogate Interval ID', fontsize=14)
+	plt.ylabel(' RMSE', fontsize=14)
 	#plt.legend(loc='upper right')
 	plt.savefig(path_db+'/surrogate_intervalerror.png' )
 
@@ -1755,7 +1749,7 @@ def main():
 	plt.plot(list_true[pt_samples+1:, 0:3  ],   label='True' )
 	plt.plot(list_surrogate[pt_samples+1:, 0:3 ], '.',   label='Surrogate' )
 	plt.xlabel('Samples', fontsize=14)
-	plt.ylabel('Likelihood', fontsize=14)
+	plt.ylabel('Log-Likelihood', fontsize=14)
 
 	plt.legend(loc='upper right')
 	plt.savefig(path+'/surr_likelihood_.png')
@@ -1830,4 +1824,4 @@ def main():
 
 	time.sleep(5)
 
-if __name__ == "__main__": main()
+if __name__ == "__main__": main() #nn

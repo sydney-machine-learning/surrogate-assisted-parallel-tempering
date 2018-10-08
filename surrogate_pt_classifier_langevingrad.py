@@ -1365,16 +1365,17 @@ class ParallelTempering:
 
 
 			print(rmse_surr, ' rmse_surr')
-
-			print(surrogate_likl[:,0], 'Model Likelihood')
-
-			print(surrogate_likl[:,1], 'Surrogate Likelihood')
-
+ 
 
 			slen = np.arange(0,surrogate_likl.shape[0],1)
 			fig = plt.figure(figsize = (12,12))
 			ax = fig.add_subplot(111)
 			ax.set_facecolor('#f2f2f3')
+			
+			plt.rcParams['xtick.labelsize'] = 20
+			plt.rcParams['ytick.labelsize'] = 20
+			params = {'legend.fontsize': 16,'legend.handlelength': 2}
+			plt.rcParams.update(params)
 			surrogate_plot = ax.plot(slen,surrogate_likl[:,1],linestyle='-', linewidth= 1, color= 'b', label= 'Surrogate Likelihood')
 			model_plot = ax.plot(slen,surrogate_likl[:,0],linestyle= '--', linewidth = 1, color = 'k', label = 'True Likelihood')
 			ax.set_xlabel('Combined samples for all replica ',size= 16)
