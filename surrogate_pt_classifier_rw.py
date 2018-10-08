@@ -237,8 +237,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 						# You can see two options to initialize model now. If you uncomment the first line then the model id loaded at every time with stored weights. On the other hand if you uncomment the second line a new model will be created every time without the knowledge from previous training. This is basically the third scheme we talked about for surrogate experiments.
 						# To implement the second scheme you need to combine the data from each training.
 
-						# self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
-						self.krnn = self.create_model()
+						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
+						#self.krnn = self.create_model()
 						break
 					except EnvironmentError as e:
 						pass
@@ -576,15 +576,7 @@ class ptReplica(multiprocessing.Process):
 
 
 				surg_likeh_list[i+1,0] = likelihood_proposal
-
-
-
-			'''is_true_lhood = True
-			[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
-			[_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal) '''
-
-
-
+ 
 
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
 
@@ -594,9 +586,7 @@ class ptReplica(multiprocessing.Process):
 			try:
 				mh_prob = min(1, math.exp(diff_likelihood  + diff_prior))
 			except OverflowError as e:
-				mh_prob = 1
-
-
+				mh_prob = 1 
 
 			accept_list[i+1] = naccept
 
@@ -634,7 +624,7 @@ class ptReplica(multiprocessing.Process):
 
 					lhood_counter = lhood_counter + 1
 
-					print (i, self.adapttemp, lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+					print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
 
 
@@ -652,15 +642,12 @@ class ptReplica(multiprocessing.Process):
 					'''rmse_train[i + 1,] =   rmse_train[lhood_counter,]
 					rmse_test[i + 1,] =  rmse_test[lhood_counter,]
 					acc_train[i+1,] =  acc_train[lhood_counter,]
-					acc_test[i+1,] =  acc_test[lhood_counter,] '''
-
-
+					acc_test[i+1,] =  acc_test[lhood_counter,] ''' 
 					lhood_counter_inf = lhood_counter_inf + 1
 
 					## print (i,lhood_counter ,   likelihood, self.adapttemp,   acc_train[i+1,], acc_test[i+1,],  'accepted sur')
 					## print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
-
-
+ 
 
 			else:
 				pos_w[i+1,] = pos_w[i,]
@@ -677,8 +664,7 @@ class ptReplica(multiprocessing.Process):
 
 					reject_counter = reject_counter + 1
 
-
-
+ 
 					## print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
 				else:
 					lhood_list[i+1,] = np.inf
@@ -701,9 +687,7 @@ class ptReplica(multiprocessing.Process):
 
 					# print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
 
-
-
-
+ 
 			#SWAPPING PREP
 			if i%self.swap_interval == 0:
 				param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
@@ -721,13 +705,13 @@ class ptReplica(multiprocessing.Process):
 						print ('error')
 
 			if (i%self.surrogate_interval == 0) and (i!=0):
-				print("Updating surrogate data")
+				#print("Updating surrogate data")
 				#Train the surrogate with the posteriors and likelihood
 				surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
-				print("data updated")
+				#print("data updated")
 				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
 				param = np.concatenate([surrogate_X, surrogate_Y],axis=1)
-				print("concatenated")
+				#print("concatenated")
 
 				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
@@ -735,7 +719,7 @@ class ptReplica(multiprocessing.Process):
 
 				model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
 				self.model_signature = model_sign
-				print("model_signature updated")
+				#print("model_signature updated")
 
 				if self.model_signature==1.0:
 					minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
@@ -1338,23 +1322,27 @@ class ParallelTempering:
 			rmse_surr =  np.sqrt(((surrogate_likl[:,1]-surrogate_likl[:,0])**2).mean())
 
 
-			# print(rmse_surr, ' rmse_surr')
-
-			# print(surrogate_likl[:,0], 'Model Likelihood')
-
-			# print(surrogate_likl[:,1], 'Surrogate Likelihood')
+			print(rmse_surr, ' rmse_surr') 
 
 
 			slen = np.arange(0,surrogate_likl.shape[0],1)
 			fig = plt.figure(figsize = (12,12))
 			ax = fig.add_subplot(111)
 			ax.set_facecolor('#f2f2f3')
+
+
+			plt.rcParams['xtick.labelsize'] = 16
+			plt.rcParams['ytick.labelsize'] = 16 
+			params = {'legend.fontsize': 16,'legend.handlelength': 2}
+			plt.rcParams.update(params)
 			surrogate_plot = ax.plot(slen,surrogate_likl[:,1],linestyle='-', linewidth= 1, color= 'b', label= 'Surrogate Likelihood')
 			model_plot = ax.plot(slen,surrogate_likl[:,0],linestyle= '--', linewidth = 1, color = 'k', label = 'True Likelihood')
 			ax.set_xlabel('Combined samples for all replica ',size= 16)
 			ax.set_ylabel(' Likelihood', size= 16)
 			ax.set_xlim([0,np.amax(slen)])
 			#ax.legend((surrogate_plot, model_plot),('Surrogate', 'True'))
+
+
 
 			ax.legend(loc='best')
 			fig.tight_layout()
@@ -1622,12 +1610,13 @@ def main():
 	timer2 = time.time()
 
 	timetotal = (timer2 - timer) /60
-	# print ((timetotal), 'min taken')
+	print (acc_train)
 
 
 
 	x_index = np.where(acc_train==np.inf)
 	acc_train = np.delete(acc_train, x_index, axis = 0)
+	print (acc_train)
 	acc_tr = np.mean(acc_train [:])
 	acctr_std = np.std(acc_train[:])
 	acctr_max = np.amax(acc_train[:])
@@ -1691,7 +1680,7 @@ def main():
 
 	xv = name+'_'+ str(run_nb)
 
-	# print (  acc_tr, acctr_max, acc_tes, acctes_max)
+	print (  acc_tr, acctr_max, acc_tes, acctes_max)
 	allres =  np.asarray([ problem, NumSample, maxtemp, swap_interval, surrogate_intervalratio, surrogate_prob,  use_langevin_gradients, learn_rate, acc_tr, acctr_std, acctr_max, acc_tes, acctest_std, acctes_max, swap_perc, accept, rmse_surr,  timetotal])
 
 	np.savetxt(outres_db,  allres   , fmt='%1.2f', newline=' '  )
