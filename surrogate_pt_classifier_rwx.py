@@ -1,4 +1,4 @@
-""" Feed Forward Network with Parallel Tempering for Multi-Core Systems   xxxx"""   
+""" Feed Forward Network with Parallel Tempering for Multi-Core Systems"""
  
 from __future__ import print_function, division
 import multiprocessing
@@ -13,7 +13,7 @@ import math
 import matplotlib as mpl
 mpl.use('agg')
 import matplotlib.mlab as mlab
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt  
 import matplotlib.ticker as mtick
 plt.rcParams['xtick.labelsize'] = 12 
 plt.rcParams['ytick.labelsize'] = 12
@@ -235,6 +235,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 					try:
 						# print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
 						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
+						#self.krnn = self.create_model(self.dropout)
+               
 						break
 					except EnvironmentError as e:
 						pass
@@ -242,7 +244,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 						# time.sleep(1)
 						# print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
 				
-			early_stopping = EarlyStopping(monitor='val_loss', patience=10)
+			early_stopping = EarlyStopping(monitor='val_loss', patience=5)
 			self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
 			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=50, epochs=20, validation_split=0.1, verbose=0, callbacks=[early_stopping])
 
@@ -252,6 +254,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			self.krnn.save(self.path+'/model_krnn_%s_.h5' %self.model_signature)
 			print("Saved model to disk  ", self.model_signature)
 
+			
 			'''plt.plot(train_log.history["loss"], label="loss")
 			plt.plot(train_log.history["val_loss"], label="val_loss") 
 			plt.savefig(self.path+'/%s_0.png'%(self.model_signature))
@@ -349,11 +352,11 @@ class ptReplica(multiprocessing.Process):
 
 		self.save_surrogatedata =  save_surrogatedata
 
-		self.compare_surrogate  = False
+		self.compare_surrogate  = True
 		self.sgd_depth = 1 # always should be 1 
 		self.learn_rate =   learn_rate # learn rate for langevin 
 
-		self.l_prob = 1  # can be evaluated for diff problems - if data too large keep this low value since the gradients cost comp time
+		self.l_prob = 0.5  # can be evaluated for diff problems - if data too large keep this low value since the gradients cost comp time
 
 		langevin_count = 0
 
@@ -514,20 +517,15 @@ class ptReplica(multiprocessing.Process):
 				init_count = 1
 
   
-			w_proposal = np.random.normal(w, step_w, w_size) 
+			w_proposal = np.random.normal(w, step_w, w_size)
  
+
+   
 			ku = random.uniform(0,1)   
  
 
-			if ku<self.surrogate_prob and i>=self.surrogate_interval+1:
+			if ku<self.surrogate_prob and i>=self.surrogate_interval+1:  
 
-
-				diff_prop = 0
-				w_proposal = np.random.normal(w, step_w, w_size)
-
-				prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
-
-			
 
 				is_true_lhood = False
 
@@ -558,7 +556,7 @@ class ptReplica(multiprocessing.Process):
 					likelihood_proposal_true = 0
 					
 
-				#print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
+				print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
 				surrogate_counter += 1
 
 				surg_likeh_list[i+1,0] =  likelihood_proposal_true
@@ -566,45 +564,23 @@ class ptReplica(multiprocessing.Process):
 			
 
 			else:
-				is_true_lhood = True   
-				w_proposal = np.random.normal(w, step_w, w_size) 
-				diff_prop = 0 
-				prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients 
+				is_true_lhood = True 
 
-				lx = np.random.uniform(0,1,1)
+				surg_likeh_list[i+1,1] =  np.nan 
 
-				if (self.use_langevin_gradients is True) and (lx< self.l_prob):  
-					w_gd = fnn.langevin_gradient(self.traindata, w.copy(), self.sgd_depth) # Eq 8
-					w_proposal = np.random.normal(w_gd, step_w, w_size) # Eq 7
-					w_prop_gd = fnn.langevin_gradient(self.traindata, w_proposal.copy(), self.sgd_depth) 
-					#first = np.log(multivariate_normal.pdf(w , w_prop_gd , sigma_diagmat)) 
-					#second = np.log(multivariate_normal.pdf(w_proposal , w_gd , sigma_diagmat)) # this gives numerical instability - hence we give a simple implementation next that takes out log 
-
-					wc_delta = (w- w_prop_gd) 
-					wp_delta = (w_proposal - w_gd )
-
-					sigma_sq = step_w
-
-					first = -0.5 * np.sum(wc_delta  *  wc_delta  ) / sigma_sq  # this is wc_delta.T  *  wc_delta /sigma_sq
-					second = -0.5 * np.sum(wp_delta * wp_delta ) / sigma_sq
-
-				
-					diff_prop =  first - second  
-
-
-					diff_prop =  diff_prop/self.adapttemp
-
-
-					langevin_count = langevin_count + 1
-
-					#print(langevin_count, diff_prop, first, second)  
-				    
-
+			  		
+				  
 			 	[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
-			 	[_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal) 
-			 	surg_likeh_list[i+1,1] =  np.nan
+			 	[_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal)
+
+
 			 	surg_likeh_list[i+1,0] = likelihood_proposal  
 
+
+			
+			'''is_true_lhood = True 
+			[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
+			[_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal) '''
 
 
 			 
@@ -657,7 +633,7 @@ class ptReplica(multiprocessing.Process):
 
 					lhood_counter = lhood_counter + 1
 
-					print (i, self.adapttemp, lhood_counter ,   likelihood,     diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+					print (i, self.adapttemp, lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
  
 
@@ -784,10 +760,6 @@ class ptReplica(multiprocessing.Process):
 		print (surrogate_counter/samples * 100 , ' % use of surogate')
 
 		accept_ratio = naccept / (samples * 1.0) * 100
-
-		print(acc_train[0:5], self.temperature, 'acc_train pos') 
-
-		#print(acc_test, self.temperature, 'acc_test pos')
 
 
 
@@ -1050,7 +1022,7 @@ class ParallelTempering:
 		for i in range(Y.shape[1]):
 			min_Y = min(Y[:,i])
 			max_Y = max(Y[:,i])
-			self.minY[0,i] =   min_Y * 2
+			self.minY[0,i] =   min_Y * 3
 			self.maxY[0,i] = -1#max_Y 
 
 		self.model_signature += 1.0 
@@ -1264,7 +1236,6 @@ class ParallelTempering:
 
 
 
-	
 	def show_results(self):
 
 		burnin = int(self.NumSamples*self.burn_in)
@@ -1618,7 +1589,7 @@ def main():
 	
 	save_surrogatedata = False # just to save surrogate data for analysis - set false since it will gen lots data
 
-	use_langevin_gradients = True
+	use_langevin_gradients = False
 
 	learn_rate = 0.01
 
