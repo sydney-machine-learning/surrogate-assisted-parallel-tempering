@@ -18,7 +18,7 @@ import matplotlib.ticker as mtick
 plt.rcParams['xtick.labelsize'] = 12
 plt.rcParams['ytick.labelsize'] = 12
 
-params = {'legend.fontsize': 12,
+params = {'legend.fontsize': 10,
           'legend.handlelength': 2}
 plt.rcParams.update(params)
 
@@ -248,7 +248,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 			early_stopping = EarlyStopping(monitor='val_loss', patience=5)
 			self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
-			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=50, epochs=20, validation_split=0.1, verbose=0, callbacks=[early_stopping])
+			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=50, epochs=50, validation_split=0.1, verbose=0, callbacks=[early_stopping])
 
 			scores = self.krnn.evaluate(X_test, y_test.ravel(), verbose = 0)
 			# print("%s: %.5f" % (self.krnn.metrics_names[1], scores[1]))
@@ -263,7 +263,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 			plt.clf()'''
 
-			results = np.array([scores[1]])
+			results = np.array([scores[1]])  
 			# print(results, 'train-metrics')
 
 
@@ -466,7 +466,7 @@ class ptReplica(multiprocessing.Process):
 		prop_list = np.zeros((samples,w_proposal.size))
 		likeh_list = np.zeros((samples,2)) # one for posterior of likelihood and the other for all proposed likelihood
 		likeh_list[0,:] = [-100, -100] # to avoid prob in calc of 5th and 95th percentile later
-		surg_likeh_list = np.zeros((samples,2))
+		surg_likeh_list = np.zeros((samples,3))
 		accept_list = np.zeros(samples)
 
 		num_accepted = 0
@@ -483,7 +483,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		pt_samples = samples * 0.6# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
+		pt_samples = samples * 1# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
 
 
 
@@ -547,7 +547,8 @@ class ptReplica(multiprocessing.Process):
 
 
 
-				likelihood_proposal = surrogate_likelihood[0]
+				#likelihood_proposal = surrogate_likelihood[0]
+				likelihood_proposal = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
 
 
 
@@ -557,11 +558,13 @@ class ptReplica(multiprocessing.Process):
 					likelihood_proposal_true = 0
 
 
-				# print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
+				print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
 				surrogate_counter += 1
 
 				surg_likeh_list[i+1,0] =  likelihood_proposal_true
 				surg_likeh_list[i+1,1] = likelihood_proposal
+				surg_likeh_list[i+1,2] = likelihood_proposal
+
 
 
 			else:
@@ -576,6 +579,8 @@ class ptReplica(multiprocessing.Process):
 
 
 				surg_likeh_list[i+1,0] = likelihood_proposal
+
+				surg_likeh_list[i+1,2] = likelihood_proposal
  
 
 			prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
@@ -1228,7 +1233,7 @@ class ParallelTempering:
 		burnin = int(self.NumSamples*self.burn_in)
 
 		likelihood_rep = np.zeros((self.num_chains, self.NumSamples  -1, 2)) # index 1 for likelihood posterior and index 0 for Likelihood proposals. Note all likilihood proposals plotted only
-		surg_likelihood = np.zeros((self.num_chains, self.NumSamples -1 , 2)) # index 1 for likelihood proposal and for gp_prediction
+		surg_likelihood = np.zeros((self.num_chains, self.NumSamples -1 , 3)) # index 1 for likelihood proposal and for gp_prediction
 		accept_percent = np.zeros((self.num_chains, 1))
 		accept_list = np.zeros((self.num_chains, self.NumSamples ))
 
@@ -1337,12 +1342,22 @@ class ParallelTempering:
 			ax.set_xlabel('Samples per Replica [R-1, R-2 ..., R-N] ',size= 25)
 			ax.set_ylabel(' Log-Likelihood', size= 25)
 			ax.set_xlim([0,np.amax(slen)]) 
+
+			factor = np.amax(slen)/self.num_chains
+
+
+			'''ax2 = ax.twiny()
+			ax2.set_xlabel("Replica")
+			ax2.set_xlim(0, 60)
+			#ax2.set_xticks([factor, factor *2, factor*3])
+			ax2.set_xticklabels(['1','2','3', '1','2','3'])'''
+
 			ax.legend(loc='best')
 			fig.tight_layout()
 			fig.subplots_adjust(top=0.88)
-			plt.savefig('%s/surrogate_likl.png'% (self.path), dpi=300, transparent=False)
+			plt.savefig('%s/surrogate_likl.pdf'% (self.path), dpi=300, transparent=False)
 
-			plt.savefig('%s/surrogate_likl.png'% (self.path_db), dpi=300, transparent=False)
+			plt.savefig('%s/surrogate_likl.pdf'% (self.path_db), dpi=300, transparent=False)
 			plt.clf()
 
 
@@ -1639,9 +1654,7 @@ def main():
 	# print(surrgate_intervalres, ' surrgate_intervalres')
 
 	fig = plt.figure()
-	#ax = fig.add_subplot(111)
-
-
+	#ax = fig.add_subplot(111) 
 
 	x = np.arange(0, surrgate_intervalres.shape[0], 1)
 	#x = x.astype(int)
@@ -1654,11 +1667,13 @@ def main():
 	#ax.yaxis.set_label_coords(-0.1,1.02)
 	#ax.yaxis.set_ticks_position('bottom')
 
-	plt.bar(x,surrgate_intervalres,  label='Test' )
-	plt.xlabel('Surrogate Interval ID', fontsize=14)
+	plt.bar(x,surrgate_intervalres  )
+	plt.xlabel('Surrogate Interval ', fontsize=14)
 	plt.ylabel(' RMSE', fontsize=14)
-	#plt.legend(loc='upper right')
+	plt.legend(loc='upper right')
 	plt.savefig(path_db+'/surrogate_intervalerror.png' )
+
+	plt.clf()
 
 
 	surr_meantrain = np.mean(surrgate_intervalres)
@@ -1692,7 +1707,9 @@ def main():
 	plt.plot(acc_train,  label='Test' )
 	plt.plot(acc_test,   label='Train' )
 	plt.xlabel('Samples', fontsize=14)
-	plt.ylabel(' Accuracy (%)', fontsize=14)
+	plt.ylabel(' Accuracy (%)', fontsize=14) 
+	params = {'legend.fontsize': 10,'legend.handlelength': 2}
+	plt.rcParams.update(params)
 	plt.legend(loc='upper right')
 
 	plt.savefig(path+'/acc_samples.png')
@@ -1702,10 +1719,12 @@ def main():
 
 	# print(rmse_train.shape)
 	plt.plot(rmse_train[:, 0],  label='Train')
-	plt.plot(rmse_test[:, 0],   label='Test')
-
+	plt.plot(rmse_test[:, 0],   label='Test') 
 	plt.xlabel('Samples', fontsize=14)
 	plt.ylabel(' RMSE', fontsize=14)
+
+	params = {'legend.fontsize': 10,'legend.handlelength': 2}
+	plt.rcParams.update(params)
 	plt.legend(loc='upper right')
 
 	plt.savefig(path+'/rmse_samples.png')
@@ -1735,7 +1754,7 @@ def main():
 	list_surrogate = list_surrogate.T
 
 
-	plt.plot(list_true[0:pt_samples, 0:3  ],   label='True' )
+	'''plt.plot(list_true[0:pt_samples, 0:3  ],   label='True' )
 	plt.plot(list_surrogate[0:pt_samples, 0:3 ], '.',   label='Surrogate' )
 	plt.xlabel('Samples', fontsize=14)
 	plt.ylabel('Log-Likelihood', fontsize=14)
@@ -1754,7 +1773,7 @@ def main():
 	plt.legend(loc='upper right')
 	plt.savefig(path+'/surr_likelihood_.png')
 	plt.savefig(path_db+'/surr_likelihood_.png')
-	plt.clf()
+	plt.clf()'''
 
 
 
