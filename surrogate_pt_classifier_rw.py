@@ -248,7 +248,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 			early_stopping = EarlyStopping(monitor='val_loss', patience=5)
 			self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
-			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=50, epochs=50, validation_split=0.1, verbose=0, callbacks=[early_stopping])
+			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=50, epochs=20, validation_split=0.1, verbose=0, callbacks=[early_stopping])
 
 			scores = self.krnn.evaluate(X_test, y_test.ravel(), verbose = 0)
 			# print("%s: %.5f" % (self.krnn.metrics_names[1], scores[1]))
@@ -1233,7 +1233,7 @@ class ParallelTempering:
 		burnin = int(self.NumSamples*self.burn_in)
 
 		likelihood_rep = np.zeros((self.num_chains, self.NumSamples  -1, 2)) # index 1 for likelihood posterior and index 0 for Likelihood proposals. Note all likilihood proposals plotted only
-		surg_likelihood = np.zeros((self.num_chains, self.NumSamples -1 , 3)) # index 1 for likelihood proposal and for gp_prediction
+		surg_likelihood = np.zeros((self.num_chains, self.NumSamples -1 , 2)) # index 1 for likelihood proposal and for gp_prediction
 		accept_percent = np.zeros((self.num_chains, 1))
 		accept_list = np.zeros((self.num_chains, self.NumSamples ))
 
@@ -1259,7 +1259,7 @@ class ParallelTempering:
 
 			file_name = self.path + '/posterior/surg_likelihood/'+'chain_' + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name)
-			surg_likelihood[i, :] = dat[1:,:]
+			surg_likelihood[i, :] = dat[1:,0:1]
 
 			file_name = self.path + '/posterior/accept_list/' + 'chain_'  + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name)
@@ -1292,6 +1292,9 @@ class ParallelTempering:
 			file_name = self.path+'/predictions/acc_train_chain_'+ str(self.temperatures[i])+ '.txt'
 			dat = np.loadtxt(file_name)
 			acc_train[i,:] = dat[burnin:]
+
+		#print(surg_likelihood)
+		print(surg_likelihood.shape, ' surg_likelihood.shape')
 
 
 		posterior = pos_w.transpose(2,0,1).reshape(self.num_param,-1)
@@ -1327,7 +1330,7 @@ class ParallelTempering:
 			rmse_surr =  np.sqrt(((surrogate_likl[:,1]-surrogate_likl[:,0])**2).mean())
 
 
-			print(rmse_surr, ' rmse_surr') 
+			#print(rmse_surr, ' rmse_surr') 
 
 
 			slen = np.arange(0,surrogate_likl.shape[0],1)
@@ -1617,9 +1620,7 @@ def main():
 
 	timer2 = time.time()
 
-	timetotal = (timer2 - timer) /60
-	print (acc_train)
-
+	timetotal = (timer2 - timer) /60 
 
 
 	x_index = np.where(acc_train==np.inf)
