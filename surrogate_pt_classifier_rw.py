@@ -483,7 +483,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		pt_samples = samples * 1# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
+		pt_samples = samples * 0.5# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
 
 
 
@@ -775,6 +775,8 @@ class ptReplica(multiprocessing.Process):
 		np.savetxt(file_name, acc_test, fmt='%1.2f')
 		file_name = self.path+'/predictions/acc_train_chain_'+ str(self.temperature)+ '.txt'
 		np.savetxt(file_name, acc_train, fmt='%1.2f')
+
+		#surg_likeh_list  = surg_likeh_list[:,0:1]
 
 
 		file_name = self.path+'/posterior/surg_likelihood/chain_'+ str(self.temperature)+ '.txt'
@@ -1259,7 +1261,7 @@ class ParallelTempering:
 
 			file_name = self.path + '/posterior/surg_likelihood/'+'chain_' + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name)
-			surg_likelihood[i, :] = dat[1:,0:1]
+			surg_likelihood[i, :] = dat[1:,0:2]
 
 			file_name = self.path + '/posterior/accept_list/' + 'chain_'  + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name)
@@ -1342,6 +1344,12 @@ class ParallelTempering:
 			plt.rcParams.update(params)
 			surrogate_plot = ax.plot(slen,surrogate_likl[:,1],linestyle='-', linewidth= 1, color= 'b', label= 'Surrogate ')
 			model_plot = ax.plot(slen,surrogate_likl[:,0],linestyle= '--', linewidth = 1, color = 'k', label = 'True')
+
+
+			residuals =  surrogate_likl[:,0]- surrogate_likl[:,1]
+
+
+			res = ax.plot(slen, residuals,linestyle= '--', linewidth = 1, color = 'r', label = 'Residuals')
 			ax.set_xlabel('Samples per Replica [R-1, R-2 ..., R-N] ',size= 25)
 			ax.set_ylabel(' Log-Likelihood', size= 25)
 			ax.set_xlim([0,np.amax(slen)]) 
@@ -1370,9 +1378,21 @@ class ParallelTempering:
 			Y_norm = self.normalize_likelihood(y_norm)
 
 
+			'''plt.plot(residuals.T) 
+			plt.xlabel('Samples', fontsize=14)
+			plt.ylabel('Residuals', fontsize=14)
+
+			plt.legend(loc='upper left')
+			plt.savefig(self.path+'/residuals.png') 
+			plt.savefig(self.path_db+'/residuals.png')
+			plt.clf()'''
+
+
 
 
 			np.savetxt(self.path + '/surrogate/surg_likelihood.txt', surrogate_likl, fmt='%1.5f')
+
+			np.savetxt(self.path_db + '/surg_likelihood.txt', surrogate_likl, fmt='%1.5f')
 
 
 
