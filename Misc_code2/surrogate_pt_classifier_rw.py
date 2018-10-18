@@ -339,8 +339,6 @@ class ptReplica(multiprocessing.Process):
 		self.testdata = testdata
 		self.w = w
 
-		self.num_param = w.shape[0]
-
 		self.minY = np.zeros((1,1))
 		self.maxY = np.zeros((1,1))
 
@@ -485,7 +483,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		pt_samples = samples * 1# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
+		pt_samples = samples * 0.5# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
 
 
 
@@ -494,8 +492,6 @@ class ptReplica(multiprocessing.Process):
 		burnsamples = int(self.samples * self.burn_in)
 
 		init_count = 0
-
-		trainset_empty = True
 
 
 
@@ -529,10 +525,6 @@ class ptReplica(multiprocessing.Process):
 
 			ku = random.uniform(0,1)
 
-			if trainset_empty == True:
-				surr_train_set = np.zeros((1, self.num_param+1))
-
-
 
 			if ku<self.surrogate_prob and i>=self.surrogate_interval+1:
 
@@ -555,8 +547,8 @@ class ptReplica(multiprocessing.Process):
 
 
 
-				likelihood_proposal = surrogate_likelihood[0]
-				#likelihood_proposal = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
+				#likelihood_proposal = surrogate_likelihood[0]
+				likelihood_proposal = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
 
 
 
@@ -576,8 +568,7 @@ class ptReplica(multiprocessing.Process):
 
 
 			else:
-				is_true_lhood = True 
-				trainset_empty = False
+				is_true_lhood = True
 
 				surg_likeh_list[i+1,1] =  np.nan
 
@@ -586,16 +577,9 @@ class ptReplica(multiprocessing.Process):
 				[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
 				[_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal)
 
-				likl_wo_temp = np.array([likl_without_temp]) 
-				X, Y = w_proposal,likl_wo_temp
-				X = X.reshape(1, X.shape[0])
-				Y = Y.reshape(1, Y.shape[0])
-				param_train = np.concatenate([X, Y],axis=1)
-				surr_train_set = np.vstack((surr_train_set, param_train))
-				
 
+				surg_likeh_list[i+1,0] = likelihood_proposal
 
-				surg_likeh_list[i+1,0] = likelihood_proposal 
 				surg_likeh_list[i+1,2] = likelihood_proposal
  
 
@@ -720,27 +704,32 @@ class ptReplica(multiprocessing.Process):
 					try:
 						result =  self.parameter_queue.get()
 						w= result[0:w.size]
-						#eta = result[w.size]
-						#likelihood = result[w.size+1]
+						eta = result[w.size]
+						likelihood = result[w.size+1]
 					except:
 						print ('error')
 
 			if (i%self.surrogate_interval == 0) and (i!=0):
 				#print("Updating surrogate data")
 				#Train the surrogate with the posteriors and likelihood
-				#surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
+				surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
 
+				lhood_withinf = likeh_list[i+1-self.surrogate_interval:i,0]
+
+
+				x_index = np.where(acc_train==np.inf)
+				acc_train = np.delete(acc_train, x_index, axis = 0)
 			 
- 
-				#surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
-				#param = np.concatenate([surrogate_X, surrogate_Y],axis=1) 
+
+				#likeh_list[i+1-self.surrogate_interval:i,0]
 
 
+				#print("data updated")
+				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
+				param = np.concatenate([surrogate_X, surrogate_Y],axis=1)
+				#print("concatenated")
 
-				#self.surrogate_parameterqueue.put(param)
-
-				self.surrogate_parameterqueue.put(surr_train_set)
-
+				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
 				self.surrogate_resume.wait()
 
@@ -759,20 +748,27 @@ class ptReplica(multiprocessing.Process):
 
 				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
 				# print("Surrogate init ", self.surrogate_init , " - should be -1")
-				del surr_train_set
-				trainset_empty = True
 
 
 
-		parameters= np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
-	 	self.parameter_queue.put(parameters)
-		parameters = np.concatenate([s_pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
-		self.surrogate_parameterqueue.put(parameters)
- 
+		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
+		## print('SWAPPED PARAM',self.adapttemp,param)
+		self.parameter_queue.put(param)
+		param = np.concatenate([s_pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
+		self.surrogate_parameterqueue.put(param)
+
+		# print ((naccept*100 / (samples * 1.0)), '% was accepted')
+
+
+		# print (surrogate_counter/samples * 100 , ' % use of surogate')
+
 		accept_ratio = naccept / (samples * 1.0) * 100
 
 
- 
+
+
+		# print(lhood_counter, lhood_counter_inf, reject_counter, reject_counter_inf, '   lhood_counter, lhood_counter_inf, reject_counter, reject_counter_inf')
+
 
 		file_name = self.path+'/posterior/pos_w/'+'chain_'+ str(self.temperature)+ '.txt'
 		np.savetxt(file_name,pos_w )
@@ -1195,8 +1191,7 @@ class ParallelTempering:
 
 
 			if ('all_param' in locals()):
-				#if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
-				if all_param.shape[1] == (self.num_param+1):
+				if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
 					self.surrogate_trainer( all_param)
 					del  all_param
 					for k in range(self.num_chains):
@@ -1386,8 +1381,23 @@ class ParallelTempering:
 
 			plt.savefig('%s/surrogate_likl.pdf'% (self.path_db), dpi=300, transparent=False)
 			plt.clf()
- 
- 
+
+
+			# creating test data set for testing with SGD-FNN verification
+			y_norm = likelihood_vec.T[:,0]
+			y_norm = y_norm.reshape(y_norm.shape[0],1)
+			Y_norm = self.normalize_likelihood(y_norm)
+
+
+			'''plt.plot(residuals.T) 
+			plt.xlabel('Samples', fontsize=14)
+			plt.ylabel('Residuals', fontsize=14)
+
+			plt.legend(loc='upper left')
+			plt.savefig(self.path+'/residuals.png') 
+			plt.savefig(self.path_db+'/residuals.png')
+			plt.clf()'''
+
 
 
 

@@ -23,7 +23,12 @@ echo Running all
 #python surrogate_pt_classifier_rw.py 5 50000   0.5  0.05  surr_lap/
 
 
-python surrogate_pt_classifier_rw.py 6 20000   0.5  0.05  surr_lap/
+#python surrogate_pt_classifier_rw.py 6 20000   0.5  0.05  surr_lap/
+
+
+python surrogate_pt_classifier_rw.py 5 10000   0.5  0.05  surr_lap-noinf/
+python surrogate_pt_classifier_rw.py 6 10000   0.5  0.05  surr_lap-noinf/
+
 
 
 

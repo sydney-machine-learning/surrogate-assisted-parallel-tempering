@@ -485,7 +485,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		pt_samples = samples * 1# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
+		pt_samples = samples * 0.5# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
 
 
 
@@ -720,20 +720,20 @@ class ptReplica(multiprocessing.Process):
 					try:
 						result =  self.parameter_queue.get()
 						w= result[0:w.size]
-						#eta = result[w.size]
-						#likelihood = result[w.size+1]
+						eta = result[w.size]
+						likelihood = result[w.size+1]
 					except:
 						print ('error')
 
 			if (i%self.surrogate_interval == 0) and (i!=0):
 				#print("Updating surrogate data")
 				#Train the surrogate with the posteriors and likelihood
-				#surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
+				surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
 
 			 
  
-				#surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
-				#param = np.concatenate([surrogate_X, surrogate_Y],axis=1) 
+				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
+				param = np.concatenate([surrogate_X, surrogate_Y],axis=1) 
 
 
 
@@ -764,15 +764,24 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		parameters= np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
-	 	self.parameter_queue.put(parameters)
-		parameters = np.concatenate([s_pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
-		self.surrogate_parameterqueue.put(parameters)
- 
+		param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
+		## print('SWAPPED PARAM',self.adapttemp,param)
+		self.parameter_queue.put(param)
+		param = np.concatenate([s_pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
+		self.surrogate_parameterqueue.put(param)
+
+		# print ((naccept*100 / (samples * 1.0)), '% was accepted')
+
+
+		# print (surrogate_counter/samples * 100 , ' % use of surogate')
+
 		accept_ratio = naccept / (samples * 1.0) * 100
 
 
- 
+
+
+		# print(lhood_counter, lhood_counter_inf, reject_counter, reject_counter_inf, '   lhood_counter, lhood_counter_inf, reject_counter, reject_counter_inf')
+
 
 		file_name = self.path+'/posterior/pos_w/'+'chain_'+ str(self.temperature)+ '.txt'
 		np.savetxt(file_name,pos_w )
@@ -1386,8 +1395,23 @@ class ParallelTempering:
 
 			plt.savefig('%s/surrogate_likl.pdf'% (self.path_db), dpi=300, transparent=False)
 			plt.clf()
- 
- 
+
+
+			# creating test data set for testing with SGD-FNN verification
+			y_norm = likelihood_vec.T[:,0]
+			y_norm = y_norm.reshape(y_norm.shape[0],1)
+			Y_norm = self.normalize_likelihood(y_norm)
+
+
+			'''plt.plot(residuals.T) 
+			plt.xlabel('Samples', fontsize=14)
+			plt.ylabel('Residuals', fontsize=14)
+
+			plt.legend(loc='upper left')
+			plt.savefig(self.path+'/residuals.png') 
+			plt.savefig(self.path_db+'/residuals.png')
+			plt.clf()'''
+
 
 
 

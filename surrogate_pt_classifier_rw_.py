@@ -485,7 +485,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-		pt_samples = samples * 1# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
+		pt_samples = samples * 0.5# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
 
 
 
@@ -555,8 +555,8 @@ class ptReplica(multiprocessing.Process):
 
 
 
-				likelihood_proposal = surrogate_likelihood[0]
-				#likelihood_proposal = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
+				#likelihood_proposal = surrogate_likelihood[0]
+				likelihood_proposal = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
 
 
 
