@@ -25,15 +25,7 @@ plt.rcParams.update(params)
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from scipy.stats import multivariate_normal
-from scipy.stats import norm
-#import GPy
-import sklearn
-from sklearn.neural_network import MLPRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.preprocessing import normalize
-import pickle
-#np.random.seed(1)
+from scipy.stats import norm 
 
 import io
 from keras.models import Sequential
@@ -223,9 +215,11 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		return krnn
 
 	def train(self, model_signature):
-		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
-		print(X_train.shape)
-		self.model_signature = model_signature
+		X_train = self.X
+		X_test = self.X
+		y_train = self.Y
+		y_test =  self.Y #train_test_split(self.X, self.Y, test_size=0.10, random_state=42) 
+ 		self.model_signature = model_signature
 
 
 		if self.model_id is 3:

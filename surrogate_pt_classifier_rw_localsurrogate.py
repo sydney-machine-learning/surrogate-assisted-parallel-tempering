@@ -27,12 +27,13 @@ from matplotlib.collections import PatchCollection
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 #import GPy
+'''
 import sklearn
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import normalize
-import pickle
+import pickle'''
 #np.random.seed(1)
 
 import io
@@ -1225,10 +1226,10 @@ class ParallelTempering:
 			model_plot = ax.plot(slen,surrogate_likl[:,0],linestyle= '--', linewidth = 1, color = 'k', label = 'True')
 
 
-			residuals =  surrogate_likl[:,0]- surrogate_likl[:,1]
+			#residuals =  surrogate_likl[:,0]- surrogate_likl[:,1]
 
 
-			res = ax.plot(slen, residuals,linestyle= '--', linewidth = 1, color = 'r', label = 'Residuals')
+			#res = ax.plot(slen, residuals,linestyle= '--', linewidth = 1, color = 'r', label = 'Residuals')
 			ax.set_xlabel('Samples per Replica [R-1, R-2 ..., R-N] ',size= 25)
 			ax.set_ylabel(' Log-Likelihood', size= 25)
 			ax.set_xlim([0,np.amax(slen)]) 
