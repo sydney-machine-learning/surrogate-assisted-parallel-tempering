@@ -179,7 +179,7 @@ class Network:
 
 class surrogate: #General Class for surrogate models for predicting likelihood given the weights
 
-	def __init__(self, model, X, Y, min_X, max_X, min_Y , max_Y, path, save_surrogatedata):
+	def __init__(self, model, X, Y, min_X, max_X, min_Y , max_Y, path, save_surrogatedata, model_topology):
 
 		self.path = path + '/surrogate'
 		indices = np.where(Y==np.inf)[0]
@@ -193,13 +193,15 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		self.min_X = min_X
 		self.max_X = max_X
 
+		self.model_topology = model_topology
+
 		self.save_surrogatedata =  save_surrogatedata
 
 		if model=="gp":
 			self.model_id = 1
 		elif model == "nn":
 			self.model_id = 2
-		elif model == "krnn":
+		elif model == "krnn": # keras nn
 			self.model_id = 3
 			self.krnn = Sequential()
 		else:
@@ -217,8 +219,20 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 	def create_model(self):
 		krnn = Sequential()
-		krnn.add(Dense(64, input_dim=self.X.shape[1], kernel_initializer='uniform', activation='relu'))
-		krnn.add(Dense(16, kernel_initializer='uniform', activation='relu'))
+
+		if self.model_topology == 1:
+			krnn.add(Dense(64, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
+			krnn.add(Dense(16, kernel_initializer='uniform', activation='relu'))  #16
+
+		if self.model_topology == 2:
+			krnn.add(Dense(120, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
+			krnn.add(Dense(40, kernel_initializer='uniform', activation='relu'))  #16
+
+		if self.model_topology == 3:
+			krnn.add(Dense(200, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
+			krnn.add(Dense(50, kernel_initializer='uniform', activation='relu'))  #16
+
+
 		krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))
 		return krnn
 
@@ -310,7 +324,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 class ptReplica(multiprocessing.Process):
 
-	def __init__(self, use_surrogate,  use_langevin_gradients,  learn_rate, save_surrogatedata,  w,  minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume):
+	def __init__(self, use_surrogate,  use_langevin_gradients,  learn_rate, save_surrogatedata,  w,  minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume, surrogate_topology):
 		#MULTIPROCESSING VARIABLES
 		multiprocessing.Process.__init__(self)
 		self.processID = temperature
@@ -325,6 +339,8 @@ class ptReplica(multiprocessing.Process):
 		self.surrogate_prob = surrogate_prob
 		#PARALLEL TEMPERING VARIABLES
 		self.temperature = temperature
+
+		self.surrogate_topology = surrogate_topology
 
 
 		self.adapttemp =  self.temperature #* ratio  #
@@ -542,7 +558,7 @@ class ptReplica(multiprocessing.Process):
 					minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
 					self.minY[0,0] = minmax[0]
 					self.maxY[0,0] = minmax[1]
-					surrogate_model = surrogate("krnn",surrogate_X.copy(),surrogate_Y.copy(), self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata)
+					surrogate_model = surrogate("krnn",surrogate_X.copy(),surrogate_Y.copy(), self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology)
 					surrogate_likelihood, nn_predict = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]),False)
 					surrogate_likelihood = surrogate_likelihood *(1.0/self.adapttemp)
 
@@ -755,7 +771,7 @@ class ptReplica(multiprocessing.Process):
 					# # print 'min ', self.minY, ' max ', self.maxY
 					dummy_X = np.zeros((1,1))
 					dummy_Y = np.zeros((1,1))
-					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata )
+					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology )
 
 				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
 				# print("Surrogate init ", self.surrogate_init , " - should be -1")
@@ -819,7 +835,7 @@ class ptReplica(multiprocessing.Process):
 
 class ParallelTempering:
 
-	def __init__(self, use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db):
+	def __init__(self, use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology):
 		#FNN Chain variables
 		self.traindata = traindata
 		self.testdata = testdata
@@ -860,6 +876,8 @@ class ParallelTempering:
 		self.model_signature = 0.0
 
 		self.use_surrogate = use_surrogate
+
+		self.surrogate_topology = surrogate_topology
 
 
 		self.save_surrogatedata =  save_surrogatedata
@@ -976,7 +994,7 @@ class ParallelTempering:
 		w = np.random.randn(self.num_param)
 
 		for i in range(0, self.num_chains):
-			self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogatedata, w,  self.minlim_param, self.maxlim_param, self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i]))
+			self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogatedata, w,  self.minlim_param, self.maxlim_param, self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i], self.surrogate_topology))
 
 	def surr_procedure(self,queue):
 
@@ -1044,7 +1062,7 @@ class ParallelTempering:
 		indices = np.where(Y==np.inf)[0]
 		X = np.delete(X, indices, axis=0)
 		Y = np.delete(Y,indices, axis=0)
-		surrogate_model = surrogate("krnn", X , Y , self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata )
+		surrogate_model = surrogate("krnn", X , Y , self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology )
 		surrogate_model.train(self.model_signature)
 
 
@@ -1365,7 +1383,7 @@ class ParallelTempering:
 			residuals =  surrogate_likl[:,0]- surrogate_likl[:,1]
 
 
-			res = ax.plot(slen, residuals,linestyle= '--', linewidth = 1, color = 'r', label = 'Residuals')
+			#res = ax.plot(slen, residuals,linestyle= '--', linewidth = 1, color = 'r', label = 'Residuals')
 			ax.set_xlabel('Samples per Replica [R-1, R-2 ..., R-N] ',size= 25)
 			ax.set_ylabel(' Log-Likelihood', size= 25)
 			ax.set_xlim([0,np.amax(slen)]) 
@@ -1451,6 +1469,7 @@ def main():
 		hidden = 50
 		ip = 11 #input
 		output = 10
+		surrogate_topology = 2
 		#NumSample = 50000
 	if problem == 3: #IRIS
 		data  = np.genfromtxt('DATA/iris.csv',delimiter=';')
@@ -1462,6 +1481,7 @@ def main():
 		hidden = 8  #12
 		ip = 4 #input
 		output = 3
+		surrogate_topology = 1
 		#NumSample = 50000
 	if problem == 2: #Wine Quality White
 		data  = np.genfromtxt('DATA/winequality-white.csv',delimiter=';')
@@ -1473,6 +1493,7 @@ def main():
 		hidden = 50
 		ip = 11 #input
 		output = 10
+		surrogate_topology = 2
 		#NumSample = 50000
 	if problem == 4: #Ionosphere
 		traindata = np.genfromtxt('DATA/Ions/Ions/ftrain.csv',delimiter=',')[:,:-1]
@@ -1481,6 +1502,7 @@ def main():
 		hidden = 15 #50
 		ip = 34 #input
 		output = 2
+		surrogate_topology = 1
 		#NumSample = 50000
 	if problem == 5: #Cancer
 		traindata = np.genfromtxt('DATA/Cancer/ftrain.txt',delimiter=' ')[:,:-1]
@@ -1489,6 +1511,7 @@ def main():
 		hidden = 8 # 12
 		ip = 9 #input
 		output = 2
+		surrogate_topology = 1
 		#NumSample =  50000
 
 		# print(' cancer')
@@ -1502,6 +1525,7 @@ def main():
 		hidden = 50
 		ip = 20 #input
 		output = 2
+		surrogate_topology = 2
 		#NumSample = 50000
 	if problem == 7: #PenDigit
 		traindata = np.genfromtxt('DATA/PenDigit/train.csv',delimiter=',')
@@ -1517,6 +1541,7 @@ def main():
 		ip = 16
 		hidden = 30
 		output = 10
+		surrogate_topology = 2
 
 		#NumSample = 50000
 	if problem == 8: #Chess
@@ -1528,6 +1553,7 @@ def main():
 		hidden = 25
 		ip = 6 #input
 		output = 18
+		surrogate_topology = 3
 
 		#NumSample = 50000
 
@@ -1623,7 +1649,7 @@ def main():
 	#path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
 
 
-	pt = ParallelTempering(use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db)
+	pt = ParallelTempering(use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology)
 
 	directories = [  path+'/predictions/', path+'/posterior', path+'/results', path+'/surrogate', path+'/surrogate/learnsurrogate_data', path+'/posterior/pos_w',  path+'/posterior/pos_likelihood',path+'/posterior/surg_likelihood',path+'/posterior/accept_list'  ]
 
