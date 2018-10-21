@@ -528,6 +528,8 @@ class ptReplica(multiprocessing.Process):
 				likelihood_proposal = surrogate_likelihood[0] * self.limit
 				likelihood_movingaverage = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
 
+				likelihood_proposal = (likelihood_proposal + likelihood_movingaverage)/2
+
 
 
 				if self.compare_surrogate is True:
