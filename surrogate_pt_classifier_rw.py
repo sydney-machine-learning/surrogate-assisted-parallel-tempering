@@ -369,7 +369,7 @@ class ptReplica(multiprocessing.Process):
 
 		self.save_surrogatedata =  save_surrogatedata
 
-		self.compare_surrogate  = True
+		self.compare_surrogate  = False
 		self.sgd_depth = 1 # always should be 1
 		self.learn_rate =   learn_rate # learn rate for langevin
 
@@ -568,8 +568,8 @@ class ptReplica(multiprocessing.Process):
 
 
 
-				likelihood_proposal = surrogate_likelihood[0]
-				#likelihood_proposal = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
+				likelihood_mov_ave = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
+				likelihood_proposal = (surrogate_likelihood[0] * 0.5) + (  likelihood_mov_ave * 0.5)
 
 
 
@@ -584,7 +584,7 @@ class ptReplica(multiprocessing.Process):
 
 				surg_likeh_list[i+1,0] =  likelihood_proposal_true
 				surg_likeh_list[i+1,1] = likelihood_proposal
-				surg_likeh_list[i+1,2] = likelihood_proposal
+				surg_likeh_list[i+1,2] = likelihood_mov_ave
 
 
 
@@ -1599,8 +1599,8 @@ def main():
 
 	foldername = sys.argv[5]
 
-	#problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
-	problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
+	problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+	#problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 
 	problemfolder_db = foldername  # save main results

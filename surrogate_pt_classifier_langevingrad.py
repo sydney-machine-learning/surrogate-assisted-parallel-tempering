@@ -214,52 +214,74 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 			miner[0,i] = min(X[:,i])
 			X[:,i] = (X[:,i] - min(X[:,i]))/(max(X[:,i]) - min(X[:,i]))
 		return X, maxer, miner
+		
+	def create_model(self):
+		krnn = Sequential()
+
+		if self.model_topology == 1:
+			krnn.add(Dense(64, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
+			krnn.add(Dense(16, kernel_initializer='uniform', activation='relu'))  #16
+
+		if self.model_topology == 2:
+			krnn.add(Dense(120, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
+			krnn.add(Dense(40, kernel_initializer='uniform', activation='relu'))  #16
+
+		if self.model_topology == 3:
+			krnn.add(Dense(200, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
+			krnn.add(Dense(50, kernel_initializer='uniform', activation='relu'))  #16
+
+
+		krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))
+		return krnn
 
 	def train(self, model_signature):
-		X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
-		print(X_train.shape)
-		self.model_signature = model_signature 
-		 
+		#X_train, X_test, y_train, y_test = train_test_split(self.X, self.Y, test_size=0.10, random_state=42)
+
+		X_train = self.X
+		X_test = self.X
+		y_train = self.Y
+		y_test =  self.Y #train_test_split(self.X, self.Y, test_size=0.10, random_state=42) 
+ 
+		self.model_signature = model_signature
+
 
 		if self.model_id is 3:
-
 			if self.model_signature==1.0:
-				# krnn = Sequential()
-				self.krnn.add(Dense(64, input_dim=self.X.shape[1], kernel_initializer='uniform', activation='relu'))
-				# self.krnn.add(Dropout(0.5))
-				self.krnn.add(Dense(16, kernel_initializer='uniform', activation='relu'))
-				# self.krnn.add(Dropout(0.5))
-				self.krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))
+				self.krnn = self.create_model()
 			else:
-				while True:	
+				while True:
 					try:
-						# print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%(self.model_signature-1))
+						# You can see two options to initialize model now. If you uncomment the first line then the model id loaded at every time with stored weights. On the other hand if you uncomment the second line a new model will be created every time without the knowledge from previous training. This is basically the third scheme we talked about for surrogate experiments.
+						# To implement the second scheme you need to combine the data from each training.
+
 						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%(model_signature-1))
+						#self.krnn = self.create_model()
 						break
 					except EnvironmentError as e:
 						pass
-						# print(e.errno)
+						# # print(e.errno)
 						# time.sleep(1)
-						# print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
-				
-			early_stopping = EarlyStopping(monitor='val_loss', patience=10)
+						# # print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
+
+			early_stopping = EarlyStopping(monitor='val_loss', patience=5)
 			self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
 			train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=50, epochs=20, validation_split=0.1, verbose=0, callbacks=[early_stopping])
 
 			scores = self.krnn.evaluate(X_test, y_test.ravel(), verbose = 0)
-			print("%s: %.5f" % (self.krnn.metrics_names[1], scores[1]))
-		
+			# print("%s: %.5f" % (self.krnn.metrics_names[1], scores[1]))
+
 			self.krnn.save(self.path+'/model_krnn_%s_.h5' %self.model_signature)
-			print("Saved model to disk  ", self.model_signature)
+			# print("Saved model to disk  ", self.model_signature)
+
 
 			'''plt.plot(train_log.history["loss"], label="loss")
-			plt.plot(train_log.history["val_loss"], label="val_loss") 
+			plt.plot(train_log.history["val_loss"], label="val_loss")
 			plt.savefig(self.path+'/%s_0.png'%(self.model_signature))
 
 			plt.clf()'''
 
 			results = np.array([scores[1]])  
-			print(results, 'train-metrics')
+			# print(results, 'train-metrics')
 
 
 			with open(('%s/train_metrics.txt' % (self.path)),'ab') as outfile:
@@ -269,32 +291,32 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 				with open(('%s/learnsurrogate_data/X_train.csv' % (self.path)),'ab') as outfile:
 					np.savetxt(outfile, X_train)
 				with open(('%s/learnsurrogate_data/Y_train.csv' % (self.path)),'ab') as outfile:
-					np.savetxt(outfile, y_train)	
+					np.savetxt(outfile, y_train)
 				with open(('%s/learnsurrogate_data/X_test.csv' % (self.path)),'ab') as outfile:
 					np.savetxt(outfile, X_test)
 				with open(('%s/learnsurrogate_data/Y_test.csv' % (self.path)),'ab') as outfile:
 					np.savetxt(outfile, y_test)
- 
+
 	def predict(self, X_load, initialized):
-		 
+
 
 		if self.model_id == 3:
-			
+
 			if initialized == False:
 				model_sign = np.loadtxt(self.path+'/model_signature.txt')
-				self.model_signature = model_sign 
+				self.model_signature = model_sign
 				while True:
 					try:
 						self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%self.model_signature)
-						# print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%self.model_signature)
+						# # print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%self.model_signature)
 						break
 					except EnvironmentError as e:
-						pass 
-			
+						pass
+
 				self.krnn.compile(loss='mse', optimizer='rmsprop', metrics=['mse'])
 				krnn_prediction =-1.0
 				prediction = -1.0
-			
+
 			else:
 				krnn_prediction = self.krnn.predict(X_load)[0]
 
@@ -333,6 +355,9 @@ class ptReplica(multiprocessing.Process):
 		self.traindata = traindata
 		self.testdata = testdata
 		self.w = w
+
+
+		self.num_param = w.shape[0]
 
 		self.minY = np.zeros((1,1))
 		self.maxY = np.zeros((1,1))
@@ -461,7 +486,7 @@ class ptReplica(multiprocessing.Process):
 		prop_list = np.zeros((samples,w_proposal.size))
 		likeh_list = np.zeros((samples,2)) # one for posterior of likelihood and the other for all proposed likelihood
 		likeh_list[0,:] = [-100, -100] # to avoid prob in calc of 5th and 95th percentile later
-		surg_likeh_list = np.zeros((samples,2))
+		surg_likeh_list = np.zeros((samples,3))
 		accept_list = np.zeros(samples)
 
 		num_accepted = 0
@@ -489,6 +514,7 @@ class ptReplica(multiprocessing.Process):
 		init_count = 0
 
 
+		trainset_empty = True 
  
 
 		surrogate_counter = 0
@@ -512,6 +538,10 @@ class ptReplica(multiprocessing.Process):
 				[likelihood, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w)
 				[_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w)
 				init_count = 1
+
+
+			if trainset_empty == True:
+				surr_train_set = np.zeros((1, self.num_param+1))
 
   
 			w_proposal = np.random.normal(w, step_w, w_size) 
@@ -562,14 +592,47 @@ class ptReplica(multiprocessing.Process):
 				surrogate_counter += 1
 
 				surg_likeh_list[i+1,0] =  likelihood_proposal_true
-				surg_likeh_list[i+1,1] = likelihood_proposal
+				surg_likeh_list[i+1,1] = likelihood_proposal 
+				surg_likeh_list[i+1,2] = likelihood_proposal
 			
 
 			else:
-				is_true_lhood = True   
+				'''is_true_lhood = True   
 				w_proposal = np.random.normal(w, step_w, w_size) 
 				diff_prop = 0 
-				prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients 
+				prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients '''
+
+				is_true_lhood = True 
+				trainset_empty = False
+
+				surg_likeh_list[i+1,1] =  np.nan
+
+
+
+				[likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
+				[_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal)
+
+				likl_wo_temp = np.array([likl_without_temp]) 
+				X, Y = w_proposal,likl_wo_temp
+				X = X.reshape(1, X.shape[0])
+				Y = Y.reshape(1, Y.shape[0])
+				param_train = np.concatenate([X, Y],axis=1)
+				surr_train_set = np.vstack((surr_train_set, param_train))
+				
+
+
+				surg_likeh_list[i+1,0] = likelihood_proposal 
+				surg_likeh_list[i+1,2] = likelihood_proposal
+ 
+
+
+
+
+
+
+
+
+
 
 				lx = np.random.uniform(0,1,1)
 
@@ -745,30 +808,29 @@ class ptReplica(multiprocessing.Process):
 
 			if (i%self.surrogate_interval == 0) and (i!=0):
 				#Train the surrogate with the posteriors and likelihood
-				surrogate_X, surrogate_Y = prop_list[i+1-self.surrogate_interval:i,:],likeh_list[i+1-self.surrogate_interval:i,0]
+				self.surrogate_parameterqueue.put(surr_train_set)
 
-				surrogate_Y = surrogate_Y.reshape(surrogate_Y.shape[0],1)
-				param = np.concatenate([surrogate_X, surrogate_Y],axis=1)
- 
-				self.surrogate_parameterqueue.put(param)
 				self.surrogate_start.set()
-				self.surrogate_resume.wait() 
-				
+				self.surrogate_resume.wait()
+
 				model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
-				self.model_signature = model_sign 
-				
+				self.model_signature = model_sign
+				#print("model_signature updated")
 
 				if self.model_signature==1.0:
 					minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
 					self.minY[0,0] = minmax[0]
 					self.maxY[0,0] = minmax[1]
-					# print 'min ', self.minY, ' max ', self.maxY
+					# # print 'min ', self.minY, ' max ', self.maxY
 					dummy_X = np.zeros((1,1))
 					dummy_Y = np.zeros((1,1))
-					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata )
-				 
-				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)				
-				print("Surrogate init ", self.surrogate_init , " - should be -1") 
+					surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology )
+
+				self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
+				# print("Surrogate init ", self.surrogate_init , " - should be -1")
+				del surr_train_set
+				trainset_empty = True
+
 
 
 
@@ -1296,7 +1358,7 @@ class ParallelTempering:
 
 			file_name = self.path + '/posterior/surg_likelihood/'+'chain_' + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name) 
-			surg_likelihood[i, :] = dat[1:,:] 
+			surg_likelihood[i, :]  = dat[1:,0:2]
 
 			file_name = self.path + '/posterior/accept_list/' + 'chain_'  + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name) 

@@ -19,7 +19,7 @@ plt.rcParams['xtick.labelsize'] = 12
 plt.rcParams['ytick.labelsize'] = 12
 
 params = {'legend.fontsize': 10,
-          'legend.handlelength': 2}
+		  'legend.handlelength': 2}
 plt.rcParams.update(params)
 
 from matplotlib.patches import Polygon
@@ -50,7 +50,13 @@ import time
 
 class Network:
 
-	def __init__(self, Topo, Train, Test, learn_rate):
+	def __init__(self): 
+
+		x = 0
+
+	def create_network(self, Topo, Train, Test, learn_rate):
+		
+
 		self.Top = Topo  # NN topology [input, hidden, output]
 		self.TrainData = Train
 		self.TestData = Test
@@ -75,24 +81,11 @@ class Network:
 		z1 = X.dot(self.W1) - self.B1
 		self.hidout = self.sigmoid(z1)  # output of first hidden layer
 		z2 = self.hidout.dot(self.W2) - self.B2
-		self.out = self.sigmoid(z2)  # output second hidden layer
-
+		self.out = self.sigmoid(z2)  # output second hidden layer 
 		self.pred_class = np.argmax(self.out)
 
-
-		## print(self.pred_class, self.out, '  ---------------- out ')
-
-	'''def BackwardPass(self, Input, desired):
-		out_delta = (desired - self.out).dot(self.out.dot(1 - self.out))
-		hid_delta = out_delta.dot(self.W2.T) * (self.hidout * (1 - self.hidout))
-		# print(self.B2.shape)
-		self.W2 += (self.hidout.T.reshape(self.Top[1],1).dot(out_delta) * self.lrate)
-		self.B2 += (-1 * self.lrate * out_delta)
-		self.W1 += (Input.T.reshape(self.Top[0],1).dot(hid_delta) * self.lrate)
-		self.B1 += (-1 * self.lrate * hid_delta)'''
-
-
-
+		return self.out
+ 
 
 	def BackwardPass(self, Input, desired): # since data outputs and number of output neuons have different orgnisation
 		onehot = np.zeros((desired.size, self.Top[2]))
@@ -156,6 +149,39 @@ class Network:
 
 		return  w_updated
 
+	def backprop_train(self,  train_data, max_epoch):  # BP 
+ 
+		#self.Top = [train_data.shape[1]-1, hidden, 1]
+		 
+		#data = train_data
+		size = train_data.shape[0]
+
+		#Input = np.zeros((1, self.Top[0]))  # temp hold input
+		#Desired = np.zeros((1, self.Top[2]))
+		#fx = np.zeros(size)
+
+		sse = 0
+
+		for i in range(0, max_epoch):
+			for i in range(0, size):
+				pat = i
+				Input = train_data[pat, 0:self.Top[0]]
+				Desired = train_data[pat, self.Top[0]:]
+				self.ForwardPass(Input)
+				self.BackwardPass(Input, Desired)
+				sse = sse+ self.sampleEr(Desired)
+			 
+		rmse = np.sqrt(sse/len(train_data)*self.Top[2])
+
+			#print(i)
+		
+		#w_updated = self.encode()
+
+		return  rmse
+
+
+
+
 	def evaluate_proposal(self, data, w ):  # BP with SGD (Stocastic BP)
 
 		self.decode(w)  # method to decode w into W1, W2, B1, B2.
@@ -188,77 +214,117 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 		self.save_surrogatedata =  save_surrogatedata
   
 		self.krnn = Sequential() 
+
+		self.fnn = Network()
  
 
 	def create_model(self, X):
 		krnn = Sequential()
-		krnn.add(Dense(10, input_dim=X.shape[1], kernel_initializer='uniform', activation='relu'))
-		krnn.add(Dense(5, kernel_initializer='uniform', activation='relu'))
+		krnn.add(Dense(20, input_dim=X.shape[1], kernel_initializer='uniform', activation='sigmoid'))
+		krnn.add(Dense(5, kernel_initializer='uniform', activation='sigmoid'))
 		krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))
 		return krnn
 
 	def train(self, model_signature, temperature, X, Y):
 		#X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.10, random_state=42)
 		#print(X.shape, X_train.shape, y_train.shape, y_test.shape, ' shape ***********************************************')
+
+		temperature =  int(temperature*100) # filename
+		''' 
 		X_train = X
 		y_train = Y 
 		X_test = X
 		y_test = Y 
-		print(X.shape, X_train.shape, y_train.shape, y_test.shape, ' shape ***********************************************')
-	
+		print(X.shape, X_train.shape, y_train.shape, y_test.shape, ' shape ***********************************************')'''
+
+		self.save_surrogatedata = True 
+
+		traindata = np.column_stack( (X,Y) )  
+		hidden =  10
+		nntopology = [X.shape[1], hidden, 1] 
+
+		print (nntopology, ' nn topology')
+
+		print(traindata.shape , ' train shape')
+
+		#print(traindata , ' train ')
 
 
+		train_epocs = 200
 
 
+ 
 		self.model_signature = model_signature
  
 		if self.model_signature is True:
-			self.krnn = self.create_model(X)
-			'''krnn = Sequential()
-			krnn.add(Dense(10, input_dim=self.X.shape[1], kernel_initializer='uniform', activation='relu'))
-			krnn.add(Dense(10, kernel_initializer='uniform', activation='relu'))
-			krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))'''
-		else:
-			while True:
-				try:
-					# You can see two options to initialize model now. If you uncomment the first line then the model id loaded at every time with stored weights. On the other hand if you uncomment the second line a new model will be created every time without the knowledge from previous training. This is basically the third scheme we talked about for surrogate experiments.
-					# To implement the second scheme you need to combine the data from each training.
+			#self.krnn = self.create_model(X) 
 
+			self.fnn.create_network(nntopology,  traindata,  traindata, 0.1) 
+
+			rmse = self.fnn.backprop_train(traindata, train_epocs)
+		else:
+
+
+			rmse = self.fnn.backprop_train(traindata, train_epocs)
+
+
+			'''while True:
+				try: 
 					self.krnn = load_model(self.path+'/model_krnn_%s_.h5'%temperature)
 					#self.krnn = self.create_model()
 					break
 				except EnvironmentError as e:
-					pass
+					pass'''
 					# # print(e.errno)
 					# time.sleep(1)
 					# # print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
 
-		early_stopping = EarlyStopping(monitor='val_loss', patience=5)
+		'''early_stopping = EarlyStopping(monitor='val_loss', patience=5)
 		self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
 		train_log = self.krnn.fit(X_train, y_train.ravel(), batch_size=20, epochs=20, validation_split=0.1, verbose=0, callbacks=[early_stopping])
 
 		scores = self.krnn.evaluate(X_test, y_test.ravel(), verbose = 0) 
+
+		print(np.mean(train_log.history["val_loss"]))
+
 
 		self.krnn.save(self.path+'/model_krnn_%s_.h5' %temperature)
 		# print("Saved model to disk  ", self.model_signature)
 
 
 		results = np.array([scores[1]])  
-		# print(results, 'train-metrics')
+		# print(results, 'train-metrics')'''
+
+
 
 
 		with open(('%s/train_metrics.txt' % (self.path)),'ab') as outfile:
-			np.savetxt(outfile, results)
+			np.savetxt(outfile, [rmse])
 
+		if self.save_surrogatedata is True:
+
+			with open((self.path+'/learnsurrogate_data/X_train_'+str(temperature)+'.csv'),'ab' ) as outfile:
+				np.savetxt(outfile, traindata)
+			'''with open((self.path+'/learnsurrogate_data/Y_train_'+str(temperature)+'.csv'),'ab' ) as outfile:
+				np.savetxt(outfile, y_train)''' 
+
+		return rmse
 
  
 
 	def predict(self, X_load, initialized):
 
 		print(X_load, '  X_load  --------------------')
+
+
+
+		average = np.mean(X_load)
 		
-		krnn_prediction =  self.krnn.predict(X_load)[0]
-		return  krnn_prediction 
+		#krnn_prediction =  self.krnn.predict(X_load)[0] 
+
+		krnn_prediction =   self.fnn.ForwardPass(X_load)
+
+		return  krnn_prediction, average 
 
  
 
@@ -376,7 +442,9 @@ class ptReplica(multiprocessing.Process):
  
 		#surrogate_model = surrogate("local_nn", X , Y , 0, 0, self.limit, 0, self.path, self.save_surrogatedata )
 		#surrogate_model.train(self.model_signature)
-		surrogate_model.train( init_model, self.temperature, X, Y)
+		rmse = surrogate_model.train( init_model, self.temperature, X, Y)
+
+		return rmse
 
 
 	def run(self):
@@ -413,7 +481,9 @@ class ptReplica(multiprocessing.Process):
 		#Randomwalk Steps
 		step_w = 0.025
 		#Declare FNN
-		fnn = Network(self.topology, self.traindata, self.testdata, learn_rate)
+		fnn = Network()
+
+		fnn.create_network(self.topology, self.traindata, self.testdata, learn_rate)
 		#Evaluate Proposals
 		pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w) #
 		pred_test, prob_test = fnn.evaluate_proposal(self.testdata, w) #
@@ -521,14 +591,15 @@ class ptReplica(multiprocessing.Process):
 
 				x = surg_likeh_list[i - (blocksize-1):i,2] /self.limit
 
-				print(x)  
-				surrogate_likelihood = surrogate_model.predict(x.reshape(1,x.shape[0]), True)
+				print(x, ' sur input')  
+				surrogate_likelihood, moving_average = surrogate_model.predict(x.reshape(1,x.shape[0]), True)
 				 
 
-				likelihood_proposal = surrogate_likelihood[0] * self.limit
-				likelihood_movingaverage = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
+				likelihood_proposal = surrogate_likelihood[0] * self.limit 
 
-				likelihood_proposal = (likelihood_proposal + likelihood_movingaverage)/2
+				print(surrogate_likelihood[0], self.limit, likelihood_proposal, ' sur prediction and limit ---   ') 
+
+				#likelihood_proposal = (likelihood_proposal + (moving_average* self.limit))/2
 
 
 
@@ -538,12 +609,12 @@ class ptReplica(multiprocessing.Process):
 					likelihood_proposal_true = 0
 
 
-				print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred '  )
+				print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' vs moving ave ' , moving_average* self.limit   )
 				surrogate_counter += 1
 
 				surg_likeh_list[i+1,0] =  likelihood_proposal_true
 				surg_likeh_list[i+1,1] = likelihood_proposal
-				surg_likeh_list[i+1,2] = likelihood_movingaverage
+				surg_likeh_list[i+1,2] = moving_average* self.limit 
 
 
 
@@ -705,8 +776,17 @@ class ptReplica(multiprocessing.Process):
 					size = y.shape[0]
 					n = size % blocksize 
 					y = y[n:] 
-					init_surr_data = np.reshape(y, (-1, blocksize)) 
-					#print(init_surr_data, 'y_train * ') 
+					lag = 2 # time lag - Takens theorem
+ 
+					#k = 0 
+					num_blocks = int((y.shape[0]-blocksize)/lag )
+					v = np.zeros((num_blocks, blocksize)) 
+					for i in range(0, num_blocks): 
+						 pos = i*lag
+						 v[i, :] = y[pos:pos+blocksize] 
+					init_surr_data = v 
+
+					#init_surr_data = np.reshape(y, (-1, blocksize))  
 
 					self.limit =  np.amin(y)  * 2
 
@@ -716,10 +796,10 @@ class ptReplica(multiprocessing.Process):
  
 
 					surrogate_model = surrogate( self.path, self.save_surrogatedata )
-					self.local_surrogatetrainer(init_surr_data, surrogate_model, True)
+					rmse = self.local_surrogatetrainer(init_surr_data, surrogate_model, True)
 
-					#local_surrogatetrainer(self,params, surrogate_model, init_model): 
-
+					print(rmse, ' is rmse for ---------------------------------------------> begin')
+ 
 					init_surrogate = False
 
 					
@@ -729,13 +809,29 @@ class ptReplica(multiprocessing.Process):
 					size =y.shape[0]
 					n = size % blocksize 
 					y = y[n:] 
-					surr_data = np.reshape(y, (-1, blocksize))  
+					#surr_data = np.reshape(y, (-1, blocksize))  
+
+
+					lag = 2 # time lag - Takens theorem
+ 
+					#k = 0 
+					num_blocks = int((y.shape[0]-blocksize)/lag )
+					v = np.zeros((num_blocks, blocksize)) 
+					for i in range(0, num_blocks): 
+						pos = i*lag
+						v[i, :] = y[pos:pos+blocksize]
+
+					surr_data = v 
+					
+
+
 					surr_data = surr_data/self.limit
  
-					self.local_surrogatetrainer(surr_data, surrogate_model, False)
+					rmse = self.local_surrogatetrainer(surr_data, surrogate_model, False)
 
-				x = surg_likeh_list[i - blocksize-1:i,2] /self.limit # last 4 y values to predict next value of y 
-				#self.surrogate_init,  nn_predict  = surrogate_model.predict(x, False)
+					print(rmse, ' is rmse for ---------------------------------------------> continue')
+
+				x = surg_likeh_list[i - blocksize-1:i,2] /self.limit # last 4 y values to predict next value of y  
 
 				trainset_empty = True
 
@@ -747,7 +843,7 @@ class ptReplica(multiprocessing.Process):
  
 
 		file_name = self.path+'/posterior/pos_w/'+'chain_'+ str(self.temperature)+ '.txt'
-		np.savetxt(file_name,pos_w )
+		#np.savetxt(file_name,pos_w )
 		'''file_name = self.path+'/predictions/fxtrain_samples_chain_'+ str(self.temperature)+ '.txt'
 		np.savetxt(file_name, fxtrain_samples, fmt='%1.2f')
 		file_name = self.path+'/predictions/fxtest_samples_chain_'+ str(self.temperature)+ '.txt'
@@ -1133,9 +1229,9 @@ class ParallelTempering:
 
 
 		for i in range(self.num_chains):
-			file_name = self.path+'/posterior/pos_w/'+'chain_'+ str(self.temperatures[i])+ '.txt'
-			dat = np.loadtxt(file_name)
-			pos_w[i,:,:] = dat[burnin:,:]
+			#file_name = self.path+'/posterior/pos_w/'+'chain_'+ str(self.temperatures[i])+ '.txt'
+			#dat = np.loadtxt(file_name)
+			#pos_w[i,:,:] = dat[burnin:,:]
 
 			file_name = self.path + '/posterior/pos_likelihood/'+'chain_' + str(self.temperatures[i]) + '.txt'
 			dat = np.loadtxt(file_name)
@@ -1457,9 +1553,16 @@ def main():
 
 	foldername = sys.argv[5]
 
-	problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+ 
+	#problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+	problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
+
 
 	problemfolder_db = foldername  # save main results
+
+
+
+
 
 
 
