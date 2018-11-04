@@ -171,23 +171,23 @@ class Network:
 
 class surrogate: #General Class for surrogate models for predicting likelihood given the weights
 
-    def __init__(self, model, X, Y, min_X, max_X, min_Y , max_Y, path, save_surrogatedata, model_topology):
+    def __init__(self, model, X, Y, min_X, max_X, min_Y , max_Y, path, save_surrogate_data, model_topology):
 
         self.path = path + '/surrogate'
         indices = np.where(Y==np.inf)[0]
         X = np.delete(X, indices, axis=0)
-        Y = np.delete(Y,indices, axis=0)
+        Y = np.delete(Y, indices, axis=0)
         self.model_signature = 0.0
         self.X = X
         self.Y = Y
         self.min_Y = min_Y
-        self.max_Y =  max_Y
+        self.max_Y = max_Y
         self.min_X = min_X
         self.max_X = max_X
 
         self.model_topology = model_topology
 
-        self.save_surrogatedata =  save_surrogatedata
+        self.save_surrogate_data =  save_surrogate_data
 
         if model=="gp":
             self.model_id = 1
@@ -223,7 +223,6 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
         if self.model_topology == 3:
             krnn.add(Dense(200, input_dim=self.X.shape[1], kernel_initializer='uniform', activation ='relu')) #64
             krnn.add(Dense(50, kernel_initializer='uniform', activation='relu'))  #16
-
 
         krnn.add(Dense(1, kernel_initializer ='uniform', activation='sigmoid'))
         return krnn
@@ -281,7 +280,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
             with open(('%s/train_metrics.txt' % (self.path)),'ab') as outfile:
                 np.savetxt(outfile, results)
 
-            if self.save_surrogatedata is True:
+            if self.save_surrogate_data is True:
                 with open(('%s/learnsurrogate_data/X_train.csv' % (self.path)),'ab') as outfile:
                     np.savetxt(outfile, X_train)
                 with open(('%s/learnsurrogate_data/Y_train.csv' % (self.path)),'ab') as outfile:
@@ -313,7 +312,6 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
             else:
                 krnn_prediction = self.krnn.predict(X_load)[0]
-
                 prediction = krnn_prediction*(self.max_Y[0,0]-self.min_Y[0,0]) + self.min_Y[0,0]
 
             return prediction, krnn_prediction
@@ -321,7 +319,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 class ptReplica(multiprocessing.Process):
 
-    def __init__(self, use_surrogate,  use_langevin_gradients,  learn_rate, save_surrogatedata,  w,  minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameterqueue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume, surrogate_topology):
+    def __init__(self, use_surrogate,  use_langevin_gradients,  learn_rate, save_surrogate_data,  w,  minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, main_process,event,surrogate_parameter_queue,surrogate_interval,surrogate_prob,surrogate_start,surrogate_resume, surrogate_topology):
         #MULTIPROCESSING VARIABLES
         multiprocessing.Process.__init__(self)
         self.processID = temperature
@@ -329,7 +327,7 @@ class ptReplica(multiprocessing.Process):
         self.signal_main = main_process
         self.event =  event
         #SURROGATE VARIABLES
-        self.surrogate_parameterqueue = surrogate_parameterqueue
+        self.surrogate_parameter_queue = surrogate_parameter_queue
         self.surrogate_start = surrogate_start
         self.surrogate_resume = surrogate_resume
         self.surrogate_interval = surrogate_interval
@@ -367,7 +365,7 @@ class ptReplica(multiprocessing.Process):
 
 
 
-        self.save_surrogatedata =  save_surrogatedata
+        self.save_surrogate_data =  save_surrogate_data
 
         self.compare_surrogate  = False
         self.sgd_depth = 1 # always should be 1
@@ -555,7 +553,7 @@ class ptReplica(multiprocessing.Process):
                     minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
                     self.minY[0,0] = minmax[0]
                     self.maxY[0,0] = minmax[1]
-                    surrogate_model = surrogate("krnn",surrogate_X.copy(),surrogate_Y.copy(), self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology)
+                    surrogate_model = surrogate("krnn",surrogate_X.copy(),surrogate_Y.copy(), self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogate_data, self.surrogate_topology)
                     surrogate_likelihood, nn_predict = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]),False)
                     surrogate_likelihood = surrogate_likelihood *(1.0/self.adapttemp)
 
@@ -658,7 +656,7 @@ class ptReplica(multiprocessing.Process):
 
                     lhood_counter = lhood_counter + 1
 
-                    #print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+                    # print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
 
 
@@ -680,7 +678,7 @@ class ptReplica(multiprocessing.Process):
                     lhood_counter_inf = lhood_counter_inf + 1
 
                     ## print (i,lhood_counter ,   likelihood, self.adapttemp,   acc_train[i+1,], acc_test[i+1,],  'accepted sur')
-                    ## print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
+                    # print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
 
 
             else:
@@ -723,20 +721,24 @@ class ptReplica(multiprocessing.Process):
 
 
             #SWAPPING PREP
-            if i%self.swap_interval == 0:
-                param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
+            if i%self.swap_interval == 0 and i != 0:
+                print("\n\nSample:{}\n\n".format(i))
+                param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood*self.adapttemp]),np.asarray([self.adapttemp]),np.asarray([i])])
                 self.parameter_queue.put(param)
                 self.signal_main.set()
                 self.event.wait()
+                self.event.clear()
                 # retrieve parameters fom queues if it has been swapped
                 if not self.parameter_queue.empty() :
                     try:
                         result =  self.parameter_queue.get()
                         w= result[0:w.size]
-                        #eta = result[w.size]
-                        #likelihood = result[w.size+1]
+                        eta = result[w.size]
+                        likelihood = result[w.size+1]/self.adapttemp
                     except:
                         print ('error')
+                else:
+                    print("The parameter queue is empty!")
 
             if (i%self.surrogate_interval == 0) and (i!=0):
                 #print("Updating surrogate data")
@@ -750,12 +752,13 @@ class ptReplica(multiprocessing.Process):
 
 
 
-                #self.surrogate_parameterqueue.put(param)
+                #self.surrogate_parameter_queue.put(param)
 
-                self.surrogate_parameterqueue.put(surr_train_set)
+                self.surrogate_parameter_queue.put(surr_train_set)
 
                 self.surrogate_start.set()
                 self.surrogate_resume.wait()
+                self.surrogate_resume.clear()
 
                 model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
                 self.model_signature = model_sign
@@ -768,7 +771,7 @@ class ptReplica(multiprocessing.Process):
                     # # print 'min ', self.minY, ' max ', self.maxY
                     dummy_X = np.zeros((1,1))
                     dummy_Y = np.zeros((1,1))
-                    surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology )
+                    surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogate_data, self.surrogate_topology )
 
                 self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
                 # print("Surrogate init ", self.surrogate_init , " - should be -1")
@@ -778,9 +781,9 @@ class ptReplica(multiprocessing.Process):
 
 
         parameters= np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]),np.asarray([self.adapttemp]),np.asarray([i])])
-         self.parameter_queue.put(parameters)
+        self.parameter_queue.put(parameters)
         parameters = np.concatenate([s_pos_w[i-self.surrogate_interval:i,:],lhood_list[i-self.surrogate_interval:i,:]],axis=1)
-        self.surrogate_parameterqueue.put(parameters)
+        self.surrogate_parameter_queue.put(parameters)
 
         accept_ratio = naccept / (samples * 1.0) * 100
 
@@ -832,7 +835,7 @@ class ptReplica(multiprocessing.Process):
 
 class ParallelTempering:
 
-    def __init__(self, use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology):
+    def __init__(self, use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogate_data, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology):
         #FNN Chain variables
         self.traindata = traindata
         self.testdata = testdata
@@ -860,7 +863,7 @@ class ParallelTempering:
         self.surrogate_prob = surrogate_prob
         self.surrogate_resume_events = [multiprocessing.Event() for i in range(self.num_chains)]
         self.surrogate_start_events = [multiprocessing.Event() for i in range(self.num_chains)]
-        self.surrogate_parameterqueues = [multiprocessing.Queue() for i in range(self.num_chains)]
+        self.surrogate_parameter_queues = [multiprocessing.Queue() for i in range(self.num_chains)]
         self.surrchain_queue = multiprocessing.JoinableQueue()
         self.all_param = None
         self.geometric = True # True (geometric)  False (Linear)
@@ -877,7 +880,7 @@ class ParallelTempering:
         self.surrogate_topology = surrogate_topology
 
 
-        self.save_surrogatedata =  save_surrogatedata
+        self.save_surrogate_data =  save_surrogate_data
 
         self.use_langevin_gradients =  use_langevin_gradients
 
@@ -991,17 +994,11 @@ class ParallelTempering:
         w = np.random.randn(self.num_param)
 
         for i in range(0, self.num_chains):
-            self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogatedata, w,  self.minlim_param, self.maxlim_param, self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameterqueues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i], self.surrogate_topology))
-
-    def surr_procedure(self,queue):
-
-        if queue.empty() is False:
-            return queue.get()
-        else:
-            return
+            self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogate_data, w,  self.minlim_param, self.maxlim_param, self.NumSamples,self.traindata,self.testdata,self.topology,self.burn_in,self.temperatures[i],self.swap_interval,self.path,self.parameter_queue[i],self.wait_chain[i],self.event[i],self.surrogate_parameter_queues[i],self.surrogate_interval,self.surrogate_prob,self.surrogate_start_events[i],self.surrogate_resume_events[i], self.surrogate_topology))
 
     def swap_procedure(self, parameter_queue_1, parameter_queue_2):
         if parameter_queue_2.empty() is False and parameter_queue_1.empty() is False:
+            swapped = False
             param1 = parameter_queue_1.get()
             param2 = parameter_queue_2.get()
             w1 = param1[0:self.num_param]
@@ -1012,7 +1009,6 @@ class ParallelTempering:
             eta2 = param2[self.num_param]
             lhood2 = param2[self.num_param+1]
             T2 = param2[self.num_param+2]
-            ## print('yo')
             #SWAPPING PROBABILITIES
             try:
                 swap_proposal =  min(1,0.5*np.exp(min(709, lhood2 - lhood1)))
@@ -1020,12 +1016,13 @@ class ParallelTempering:
                 swap_proposal = 1
             u = np.random.uniform(0,1)
             if u < swap_proposal:
-                self.total_swap_proposals += 1
                 self.num_swap += 1
                 param_temp =  param1
                 param1 = param2
                 param2 = param_temp
-            return param1, param2
+                swapped = True
+            self.total_swap_proposals += 1
+            return param1, param2, swapped
         else:
             self.total_swap_proposals += 1
             return
@@ -1059,7 +1056,7 @@ class ParallelTempering:
         indices = np.where(Y==np.inf)[0]
         X = np.delete(X, indices, axis=0)
         Y = np.delete(Y,indices, axis=0)
-        surrogate_model = surrogate("krnn", X , Y , self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogatedata, self.surrogate_topology )
+        surrogate_model = surrogate("krnn", X , Y , self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogate_data, self.surrogate_topology )
         surrogate_model.train(self.model_signature)
 
 
@@ -1154,78 +1151,88 @@ class ParallelTempering:
             self.chains[l].end = end
         for j in range(0,self.num_chains):
             self.chains[j].start()
+        swaps_appected_main = 0
+        total_swaps_main = 0
+
         #SWAP PROCEDURE
-
         while True:
-            for k in range(0,self.num_chains):
-                self.wait_chain[j].wait()
-                ## print(chain_num)
-            for k in range(0,self.num_chains-1):
-                ## print('starting swap')
-                self.chain_queue.put(self.swap_procedure(self.parameter_queue[k],self.parameter_queue[k+1]))
-                while True:
-                    if self.chain_queue.empty():
-                        self.chain_queue.task_done()
-                        ## print(k,'EMPTY QUEUE')
-                        break
-                    swap_process = self.chain_queue.get()
-                    ## print(swap_process)
-                    if swap_process is None:
-                        self.chain_queue.task_done()
-                        ## print(k,'No Process')
-                        break
-                    param1, param2 = swap_process
-
-                    self.parameter_queue[k].put(param1)
-                    self.parameter_queue[k+1].put(param2)
-            for k in range (self.num_chains):
-                    ## print(k)
-                    self.event[k].set()
+            # Check if individual processes are still alive
             count = 0
+            for index in range(self.num_chains):
+                if not self.chains[index].is_alive():
+                    count+=1
+                    print(str(self.chains[index].temperature) +" Dead")
+            if count == self.num_chains:
+                break
+            print("Waiting for swap signal.")
+            # Check for signal from individual chains for swap
+            signal_count = 0
+            for index in range(0,self.num_chains):
+                print("Waiting for chain: {}".format(index+1))
+                flag = self.wait_chain[index].wait()
+                if flag:
+                    print("Signal from chain: {}".format(index+1))
+                    self.wait_chain[index].clear()
+                    signal_count += 1
+            # If signal not recieved from all chains skip the swap
+            if signal_count != self.num_chains:
+                print("Skipping the swap!")
+                continue
+
+            # Start swapping procedure
+            for index in range(0,self.num_chains-1):
+                print('starting swap')
+                try:
+                    param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],self.parameter_queue[index+1])
+                    self.parameter_queue[index].put(param_1)
+                    self.parameter_queue[index+1].put(param_2)
+                    if index == 0:
+                        if swapped:
+                            swaps_appected_main += 1
+                        total_swaps_main += 1
+                except Exception as e:
+                    print("Nothing Returned by swap method!")
+                    raise(e)
+
+            for index in range (self.num_chains):
+                    self.event[index].set()
+
             # Surrogate's Events:
+            # Check for signal from individual chains for surrogate training
+            signal_count = 0
+            for index in range(0,self.num_chains):
+                print("Waiting for surrogate train signal from chain: {}".format(index+1))
+                flag = self.surrogate_start_events[index].wait(timeout=5)
+                if flag:
+                    print("Surrogate train Signal from chain: {}".format(index+1))
+                    self.surrogate_start_events[index].clear()
+                    signal_count += 1
+            # If signal not recieved from all chains skip the training
+            if signal_count != self.num_chains:
+                print("Skipping the swap!")
+                continue
 
-
-
-            for k in range(0,self.num_chains):
-                self.surrogate_start_events[k].wait()
-            for k in range(0,self.num_chains):
-                self.surrchain_queue.put(self.surr_procedure(self.surrogate_parameterqueues[k]))
+            for index in range(0,self.num_chains):
                 params = None
-                while True:
-                    if self.surrchain_queue.empty():
-                        self.surrchain_queue.task_done()
-                        ## print(k,'EMPTY QUEUE')
-                        break
-                    params = self.surrchain_queue.get()
-                    ## print(params, 'param in surr')
-
-                    if params is not None:
-                        self.surrchain_queue.task_done()
-                        ## print(k,'No Process')
-                        break
+                try:
+                    queue = self.surrogate_parameter_queues[index]
+                    if queue.empty() is False:
+                        params = queue.get()
+                    else:
+                        raise(Exception("Surrogate Param Queue empty"))
+                except Exception as e:
+                    print("Error detected with chain: {}".format(index+1))
+                    raise(e)
                 if params is not None:
-                     all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([ all_param,params],axis=0)) #could be bug
-
-                    ## print(self.all_param, ' all_param')
-
+                     all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
 
             if ('all_param' in locals()):
                 #if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
                 if all_param.shape[1] == (self.num_param+1):
-                    self.surrogate_trainer( all_param)
+                    self.surrogate_trainer(all_param)
                     del  all_param
                     for k in range(self.num_chains):
                         self.surrogate_resume_events[k].set()
-
-            ######################
-            for i in range(self.num_chains):
-                if self.chains[i].is_alive() is False:
-                    count+=1
-            ## print(count)
-            if count == self.num_chains  :
-                # print(count)
-                break
-
 
         #JOIN THEM TO MAIN PROCESS
         for j in range(0,self.num_chains):
@@ -1234,12 +1241,12 @@ class ParallelTempering:
         for j in range(0,self.num_chains):
             self.parameter_queue[i].close()
             self.parameter_queue[i].join_thread()
-            self.surrogate_parameterqueues[i].close()
-            self.surrogate_parameterqueues[i].join_thread()
+            self.surrogate_parameter_queues[i].close()
+            self.surrogate_parameter_queues[i].join_thread()
 
 
 
-        time.sleep(5)
+        # time.sleep(5)
 
 
         pos_w, fx_train, fx_test,   rmse_train, rmse_test, acc_train, acc_test,  likelihood_vec , accept_list,  rmse_surr, surr_list, accept   = self.show_results()
@@ -1587,8 +1594,8 @@ def main():
 
 
     maxtemp = 4
-    num_chains = 10
-    swap_interval = 100000  #  #how ofen you swap neighbours
+    num_chains = 2
+    swap_interval = 100  #  #how ofen you swap neighbours
     burn_in = 0.6
     surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
     print("Surrogate interval: {}".format(surrogate_interval))
@@ -1599,7 +1606,7 @@ def main():
 
     foldername = sys.argv[5]
 
-    problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+    problemfolder = '/home/arpit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 
@@ -1636,7 +1643,7 @@ def main():
     #expfile = open( path+'/expdesign_file.txt','w')
 
 
-    save_surrogatedata = False # just to save surrogate data for analysis - set false since it will gen lots data
+    save_surrogate_data = False # just to save surrogate data for analysis - set false since it will gen lots data
 
     use_langevin_gradients = False
 
@@ -1648,7 +1655,7 @@ def main():
     #path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
 
 
-    pt = ParallelTempering(use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogatedata, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology)
+    pt = ParallelTempering(use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogate_data, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology)
 
     directories = [  path+'/predictions/', path+'/posterior', path+'/results', path+'/surrogate', path+'/surrogate/learnsurrogate_data', path+'/posterior/pos_w',  path+'/posterior/pos_likelihood',path+'/posterior/surg_likelihood',path+'/posterior/accept_list'  ]
 
