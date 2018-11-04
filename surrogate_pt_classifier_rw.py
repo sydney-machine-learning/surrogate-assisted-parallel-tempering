@@ -579,7 +579,7 @@ class ptReplica(multiprocessing.Process):
 					likelihood_proposal_true = 0
 
 
-				print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
+				#print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
 				surrogate_counter += 1
 
 				surg_likeh_list[i+1,0] =  likelihood_proposal_true
@@ -658,7 +658,7 @@ class ptReplica(multiprocessing.Process):
 
 					lhood_counter = lhood_counter + 1
 
-					print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+					#print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
 
 
@@ -1046,7 +1046,7 @@ class ParallelTempering:
 		for i in range(Y.shape[1]):
 			min_Y = min(Y[:,i])
 			max_Y = max(Y[:,i])
-			self.minY[0,i] =   min_Y * 3
+			self.minY[0,i] =   min_Y * 2
 			self.maxY[0,i] = -1#max_Y
 
 		self.model_signature += 1.0
