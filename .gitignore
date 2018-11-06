@@ -2,4 +2,5 @@ RESULTS/*
 SydneyResults/* 
 *.txt
 *.csv
+res*/
 detailed*
