@@ -796,6 +796,7 @@ class ptReplica(multiprocessing.Process):
         file_name = self.path + '/posterior/accept_list/chain_' + str(self.temperature) + '.txt'
         np.savetxt(file_name, accept_list, fmt='%1.4f')
         print("Temperature {} chain dead!".format(self.temperature))
+        self.pause_chain_event.set()
         return
 
 class ParallelTempering:
@@ -1138,7 +1139,7 @@ class ParallelTempering:
             signal_count = 0
             for index in range(0,self.num_chains):
                 print("Waiting for chain: {}. Chain alive: {}".format(index+1, self.chains[index].is_alive()))
-                flag = self.pause_chain_events[index].wait(timeout=5)
+                flag = self.pause_chain_events[index].wait()
                 if flag:
                     print("Signal from chain: {}".format(index+1))
                     self.pause_chain_events[index].clear()
@@ -1538,9 +1539,9 @@ def main():
 
 
     maxtemp = 4
-    num_chains = 8
+    num_chains = 10
     swap_interval = 100  #  #how ofen you swap neighbours
-    burn_in = 0.6
+    burn_in = 0.2
     surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
     print("Surrogate interval: {}".format(surrogate_interval))
 
