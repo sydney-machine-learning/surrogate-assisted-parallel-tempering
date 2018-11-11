@@ -319,7 +319,7 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
 
 class ptReplica(multiprocessing.Process):
 
-    def __init__(self, use_surrogate, use_langevin_gradients, learn_rate, save_surrogate_data, w, minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, pause_chain_event, resume_chain_event, surrogate_parameter_queue, surrogate_interval, surrogate_prob, surrogate_start, surrogate_resume, surrogate_topology):
+    def __init__(self, use_surrogate, use_langevin_gradients, learn_rate, save_surrogate_data, w, minlim_param, maxlim_param, samples, traindata, testdata, topology, burn_in, temperature, swap_interval, path, parameter_queue, pause_chain_event, resume_chain_event, surrogate_parameter_queue, surrogate_interval, surrogate_prob, parent_conn, replica_conn, surrogate_topology):
         #MULTIPROCESSING VARIABLES
         multiprocessing.Process.__init__(self)
         self.processID = temperature
@@ -328,18 +328,15 @@ class ptReplica(multiprocessing.Process):
         self.resume_chain_event = resume_chain_event
         #SURROGATE VARIABLES
         self.surrogate_parameter_queue = surrogate_parameter_queue
-        self.surrogate_start = surrogate_start
-        self.surrogate_resume = surrogate_resume
+        # self.surrogate_trained = surrogate_trained
+        self.parent_conn = parent_conn
+        self.replica_conn = replica_conn
         self.surrogate_interval = surrogate_interval
         self.surrogate_prob = surrogate_prob
         #PARALLEL TEMPERING VARIABLES
         self.temperature = temperature
-
         self.surrogate_topology = surrogate_topology
-
-
-        self.adapttemp =  self.temperature #* ratio  #
-
+        self.adapttemp =  self.temperature #* ratio
         self.swap_interval = swap_interval
         self.path = path
         self.burn_in = burn_in
@@ -349,23 +346,17 @@ class ptReplica(multiprocessing.Process):
         self.traindata = traindata
         self.testdata = testdata
         self.w = w
-
         self.num_param = w.shape[0]
-
         self.minY = np.zeros((1,1))
         self.maxY = np.zeros((1,1))
         self.minlim_param = minlim_param
         self.maxlim_param = maxlim_param
-
         self.use_surrogate =  use_surrogate
         self.use_langevin_gradients = use_langevin_gradients
-
         self.save_surrogate_data =  save_surrogate_data
-
         self.compare_surrogate  = True
         self.sgd_depth = 1 # always should be 1
         self.learn_rate =   learn_rate # learn rate for langevin
-
         self.l_prob = 0.5  # can be evaluated for diff problems - if data too large keep this low value since the gradients cost comp time
 
         langevin_count = 0
@@ -471,74 +462,43 @@ class ptReplica(multiprocessing.Process):
         likeh_list[0,:] = [-100, -100] # to avoid prob in calc of 5th and 95th percentile later
         surg_likeh_list = np.zeros((samples,3))
         accept_list = np.zeros(samples)
-
         num_accepted = 0
-
         is_true_lhood = True
-
-
         lhood_counter = 0
         lhood_counter_inf = 0
         reject_counter = 0
         reject_counter_inf = 0
-
         langevin_count = 0
-
-
-
         pt_samples = samples * 1# this means that PT in canonical form with adaptive temp will work till pt  samples are reached
-
-
-
-
-
         burnsamples = int(self.samples * self.burn_in)
-
         init_count = 0
-
         trainset_empty = True
-
-
         surrogate_model = None
-
         surrogate_counter = 0
+        num_events = 0
 
         for i in range(samples-1):
 
             timer1 = time.time()
-
             lx = np.random.uniform(0,1,1)
-
-
             ratio = ((samples -i) /(samples*1.0))
-
-            #self.adapttemp =  self.temperature
-
+            # self.adapttemp =  self.temperature
             if i < pt_samples:
                 self.adapttemp =  self.temperature #* ratio  #
-
             if i == pt_samples and init_count ==0: # move to MCMC canonical
                 self.adapttemp = 1
                 [likelihood, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w)
                 [_, pred_test, rmsetest, likl_without_temp] = self.likelihood_func(fnn, self.testdata, w)
                 init_count = 1
-
-
             w_proposal = np.random.normal(w, step_w, w_size)
-
-
-
             ku = random.uniform(0,1)
 
             if trainset_empty == True:
                 surr_train_set = np.zeros((1, self.num_param+1))
 
-
-
-            if ku<self.surrogate_prob and i>=self.swap_interval+1:
+            if ku<self.surrogate_prob and i> self.swap_interval*5:
 
                 is_true_lhood = False
-
                 if surrogate_model == None:
                     minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
                     self.minY[0,0] = minmax[0]
@@ -554,18 +514,13 @@ class ptReplica(multiprocessing.Process):
                     surrogate_likelihood,  nn_predict = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), True)
                     surrogate_likelihood = surrogate_likelihood *(1.0/self.adapttemp)
 
-
-
                 likelihood_mov_ave = (surg_likeh_list[i,2] + surg_likeh_list[i-1,2]+ surg_likeh_list[i-2,2])/3
                 likelihood_proposal = (surrogate_likelihood[0] * 0.5) + (  likelihood_mov_ave * 0.5)
-
-
 
                 if self.compare_surrogate is True:
                     [likelihood_proposal_true, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
                 else:
                     likelihood_proposal_true = 0
-
 
                 #print ('\nSample : ', i, ' Chain :', self.adapttemp, ' -A', likelihood_proposal_true, ' vs. P ',  likelihood_proposal, ' ---- nnPred ', nn_predict, self.minY, self.maxY )
                 surrogate_counter += 1
@@ -574,36 +529,24 @@ class ptReplica(multiprocessing.Process):
                 surg_likeh_list[i+1,1] = likelihood_proposal
                 surg_likeh_list[i+1,2] = likelihood_mov_ave
 
-
-
             else:
                 is_true_lhood = True
                 trainset_empty = False
-
                 surg_likeh_list[i+1,1] =  np.nan
-
-
-
                 [likelihood_proposal, pred_train, rmsetrain, likl_without_temp] = self.likelihood_func(fnn, self.traindata, w_proposal)
                 [_, pred_test, rmsetest, likl_without_temp_] = self.likelihood_func(fnn, self.testdata, w_proposal)
-
                 likl_wo_temp = np.array([likl_without_temp])
                 X, Y = w_proposal,likl_wo_temp
                 X = X.reshape(1, X.shape[0])
                 Y = Y.reshape(1, Y.shape[0])
                 param_train = np.concatenate([X, Y],axis=1)
                 surr_train_set = np.vstack((surr_train_set, param_train))
-
-
-
                 surg_likeh_list[i+1,0] = likelihood_proposal
                 surg_likeh_list[i+1,2] = likelihood_proposal
 
 
             prior_prop = self.prior_likelihood(sigma_squared, nu_1, nu_2, w_proposal)  # takes care of the gradients
-
             diff_likelihood = likelihood_proposal -   likelihood_copy # (lhood_list[i,]  /self.adapttemp)  #
-
             diff_prior = prior_prop - prior_current
             try:
                 mh_prob = min(1, math.exp(diff_likelihood  + diff_prior))
@@ -611,18 +554,13 @@ class ptReplica(multiprocessing.Process):
                 mh_prob = 1
 
             accept_list[i+1] = naccept
-
-
             #likeh_list[i+1,0] = surrogate_var
             #prop_list[i+1,] = v_proposal
-
 
             u = random.uniform(0, 1)
 
             prop_list[i+1,] = w_proposal
             likeh_list[i+1,0] = likl_without_temp
-
-
             if u < mh_prob:
                 naccept  =  naccept + 1
                 likelihood = likelihood_proposal
@@ -646,7 +584,7 @@ class ptReplica(multiprocessing.Process):
 
                     lhood_counter = lhood_counter + 1
 
-                    print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+                    # print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
 
 
@@ -668,7 +606,7 @@ class ptReplica(multiprocessing.Process):
                     lhood_counter_inf = lhood_counter_inf + 1
 
                     ## print (i,lhood_counter ,   likelihood, self.adapttemp,   acc_train[i+1,], acc_test[i+1,],  'accepted sur')
-                    print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
+                    # print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
 
 
             else:
@@ -687,7 +625,7 @@ class ptReplica(multiprocessing.Process):
                     reject_counter = reject_counter + 1
 
 
-                    print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
+                    # print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
 
                 else:
                     lhood_list[i+1,] = np.inf
@@ -706,51 +644,63 @@ class ptReplica(multiprocessing.Process):
                     reject_counter_inf = reject_counter_inf + 1
 
 
-                    print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
+                    # print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
 
 
             #SWAPPING PREP
             if i%self.swap_interval == 0 and i != 0:
                 print("\n\nSample:{}\n\n".format(i))
-                param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood*self.adapttemp]),np.asarray([self.adapttemp]),np.asarray([i])])
+                num_events += 1
+                surrogate_interval = False
                 # add parameters to the swap param queue and surrogate params queue
-                self.parameter_queue.put(param)
-                self.surrogate_parameter_queue.put(surr_train_set)
+                if num_events%5==0 and num_events!=0:
+                    self.surrogate_parameter_queue.put(surr_train_set)
+                    surrogate_interval = True
+                    self.replica_conn.send(surrogate_interval)
+                else:
+                    param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood*self.adapttemp]),np.asarray([self.adapttemp]),np.asarray([i])])
+                    self.parameter_queue.put(param)
+                    self.replica_conn.send(surrogate_interval)
                 # Pause the chain execution and signal main process
                 self.pause_chain_event.set()
                 print("Temperature: {} waiting for swap and surrogate training complete signal. Event: {}".format(self.temperature, self.pause_chain_event.is_set()))
                 # Wait for the main process to complete the swap and surrogate training
                 self.resume_chain_event.wait()
                 self.resume_chain_event.clear()
-                # retrieve parameters fom queues if it has been swapped
-                if not self.parameter_queue.empty() :
-                    try:
-                        result =  self.parameter_queue.get()
-                        w= result[0:w.size]
-                        eta = result[w.size]
-                        likelihood = result[w.size+1]/self.adapttemp
-                    except:
-                        print ('error')
+                print("Signal from main. Surrogate Interval: {}".format(surrogate_interval))
+                if not surrogate_interval:
+                    # retrieve parameters fom queues if it has been swapped
+                    print("------------------------Swapping--------------------")
+                    if not self.parameter_queue.empty() :
+                        try:
+                            result =  self.parameter_queue.get()
+                            w= result[0:w.size]
+                            eta = result[w.size]
+                            likelihood = result[w.size+1]/self.adapttemp
+                        except:
+                            print ('error')
+                    else:
+                        print("The parameter queue is empty!")
+
                 else:
-                    print("The parameter queue is empty!")
+                    print('----------------------Surrogate Training---------------------------')
+                    model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
+                    self.model_signature = model_sign
+                    #print("model_signature updated")
 
-                model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
-                self.model_signature = model_sign
-                #print("model_signature updated")
+                    if self.model_signature==1.0:
+                        minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
+                        self.minY[0,0] = minmax[0]
+                        self.maxY[0,0] = minmax[1]
+                        # print 'min ', self.minY, ' max ', self.maxY
+                        dummy_X = np.zeros((1,1))
+                        dummy_Y = np.zeros((1,1))
+                        surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogate_data, self.surrogate_topology )
 
-                if self.model_signature==1.0:
-                    minmax = np.loadtxt(self.path+'/surrogate/minmax.txt')
-                    self.minY[0,0] = minmax[0]
-                    self.maxY[0,0] = minmax[1]
-                    # # print 'min ', self.minY, ' max ', self.maxY
-                    dummy_X = np.zeros((1,1))
-                    dummy_Y = np.zeros((1,1))
-                    surrogate_model = surrogate("krnn", dummy_X, dummy_Y, self.minlim_param, self.maxlim_param, self.minY, self.maxY, self.path, self.save_surrogate_data, self.surrogate_topology )
-
-                self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
-                # print("Surrogate init ", self.surrogate_init , " - should be -1")
-                del surr_train_set
-                trainset_empty = True
+                    self.surrogate_init,  nn_predict  = surrogate_model.predict(w_proposal.reshape(1,w_proposal.shape[0]), False)
+                    # print("Surrogate init ", self.surrogate_init , " - should be -1")
+                    del surr_train_set
+                    trainset_empty = True
 
         parameters= np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood]), np.asarray([self.adapttemp]), np.asarray([i])])
         self.parameter_queue.put(parameters)
@@ -797,6 +747,8 @@ class ptReplica(multiprocessing.Process):
         np.savetxt(file_name, accept_list, fmt='%1.4f')
         print("Temperature {} chain dead!".format(self.temperature))
         self.pause_chain_event.set()
+        self.replica_conn.send(False)
+        print("Parameter Queue Empty: {}; Surrogate Queue Empty: {}".format(self.parameter_queue.empty(), self.surrogate_parameter_queue.empty()))
         return
 
 class ParallelTempering:
@@ -820,37 +772,36 @@ class ParallelTempering:
         self.NumSamples = int(NumSample/self.num_chains)
         self.sub_sample_size = max(1, int( 0.05* self.NumSamples))
         # create queues for transfer of parameters between process chain
-        self.parameter_queue = [multiprocessing.Queue() for i in range(num_chains)]
-        self.chain_queue = multiprocessing.JoinableQueue()
-        self.pause_chain_events = [multiprocessing.Event() for i in range (self.num_chains)]
-        self.resume_chain_events = [multiprocessing.Event() for i in range (self.num_chains)]
+        self.parameter_queue = [multiprocessing.Queue() for i in range(self.num_chains)]
+        self.pause_chain_events = [multiprocessing.Event() for i in range(self.num_chains)]
+        self.resume_chain_events = [multiprocessing.Event() for i in range(self.num_chains)]
+        self.surrogate_trained = [multiprocessing.Queue() for i in range(self.num_chains)]
         # create variables for surrogates
         self.surrogate_interval = surrogate_interval
         self.surrogate_prob = surrogate_prob
-        self.surrogate_resume_events = [multiprocessing.Event() for i in range(self.num_chains)]
-        self.surrogate_start_events = [multiprocessing.Event() for i in range(self.num_chains)]
         self.surrogate_parameter_queues = [multiprocessing.Queue() for i in range(self.num_chains)]
-        self.surrchain_queue = multiprocessing.JoinableQueue()
+        self.surrogate_train_events = [multiprocessing.Event() for i in range(self.num_chains)]
         self.all_param = None
         self.geometric = True # True (geometric)  False (Linear)
-
         self.minlim_param = 0.0
         self.maxlim_param = 0.0
         self.minY = np.zeros((1,1))
         self.maxY = np.ones((1,1))
-
         self.model_signature = 0.0
-
         self.use_surrogate = use_surrogate
-
         self.surrogate_topology = surrogate_topology
-
-
         self.save_surrogate_data =  save_surrogate_data
-
         self.use_langevin_gradients =  use_langevin_gradients
-
         self.learn_rate = learn_rate
+        self.create_connections()
+
+    def create_connections(self):
+        self.parent_conns = [None] * self.num_chains
+        self.replica_conns = [None] * self.num_chains
+        for index in range(self.num_chains):
+            self.parent_conns[index], self.replica_conns[index] = multiprocessing.Pipe()
+
+
 
     def default_beta_ladder(self, ndim, ntemps, Tmax): #https://github.com/konqr/ptemcee/blob/master/ptemcee/sampler.py
         """
@@ -960,7 +911,7 @@ class ParallelTempering:
         w = np.random.randn(self.num_param)
 
         for i in range(0, self.num_chains):
-            self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogate_data, w,  self.minlim_param, self.maxlim_param, self.NumSamples, self.traindata, self.testdata, self.topology, self.burn_in, self.temperatures[i], self.swap_interval, self.path, self.parameter_queue[i], self.pause_chain_events[i], self.resume_chain_events[i], self.surrogate_parameter_queues[i], self.surrogate_interval, self.surrogate_prob, self.surrogate_start_events[i], self.surrogate_resume_events[i], self.surrogate_topology))
+            self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogate_data, w,  self.minlim_param, self.maxlim_param, self.NumSamples, self.traindata, self.testdata, self.topology, self.burn_in, self.temperatures[i], self.swap_interval, self.path, self.parameter_queue[i], self.pause_chain_events[i], self.resume_chain_events[i], self.surrogate_parameter_queues[i], self.surrogate_interval, self.surrogate_prob, self.parent_conns[i], self.replica_conns[i], self.surrogate_topology))
 
     def swap_procedure(self, parameter_queue_1, parameter_queue_2):
         if parameter_queue_2.empty() is False and parameter_queue_1.empty() is False:
@@ -1120,6 +1071,7 @@ class ParallelTempering:
             self.chains[j].start()
         swaps_appected_main = 0
         total_swaps_main = 0
+        num_events = 0
 
         #SWAP PROCEDURE
         while True:
@@ -1133,53 +1085,64 @@ class ParallelTempering:
                     print(str(self.chains[index].temperature) +" Alive")
             if count == self.num_chains:
                 break
+            else:
+                print("Count: {}".format(count))
             print("Waiting for swap signal.")
 
             # Check for signal from individual chains for swap
+            surrogate_interval = [False]*self.num_chains
             signal_count = 0
             for index in range(0,self.num_chains):
-                print("Waiting for chain: {}. Chain alive: {}".format(index+1, self.chains[index].is_alive()))
+                print("Waiting for chain: {}. Chain alive: {}".format(self.temperatures[index], self.chains[index].is_alive()))
+                if not self.chains[index].is_alive():
+                    break
                 flag = self.pause_chain_events[index].wait()
                 if flag:
-                    print("Signal from chain: {}".format(index+1))
+                    print("Signal from chain: {}".format(self.temperatures[index]))
+                    surrogate_interval[index] = self.parent_conns[index].recv()
                     self.pause_chain_events[index].clear()
                     signal_count += 1
 
             # If signal not recieved from all chains skip the swap
             if signal_count == self.num_chains:
+                num_events += 1
+                # surrogate_trained = False
                 # Start swapping procedure
-                for index in range(0,self.num_chains-1):
-                    print('starting swap')
-                    try:
-                        param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],self.parameter_queue[index+1])
-                        self.parameter_queue[index].put(param_1)
-                        self.parameter_queue[index+1].put(param_2)
-                        if index == 0:
-                            if swapped:
-                                swaps_appected_main += 1
-                            total_swaps_main += 1
-                    except Exception as e:
-                        print("Nothing Returned by swap method!")
+                if not np.all(surrogate_interval):
+                    print('---------------------------starting swap------------------------')
+                    for index in range(0,self.num_chains-1):
+                        try:
+                            param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],self.parameter_queue[index+1])
+                            self.parameter_queue[index].put(param_1)
+                            self.parameter_queue[index+1].put(param_2)
+                            if index == 0:
+                                if swapped:
+                                    swaps_appected_main += 1
+                                total_swaps_main += 1
+                        except Exception as e:
+                            print("Nothing Returned by swap method!")
+                else:
+                    for index in range(0,self.num_chains):
+                        params = None
+                        try:
+                            queue = self.surrogate_parameter_queues[index]
+                            if queue.empty() is False:
+                                params = queue.get()
+                            else:
+                                raise(Exception("Surrogate Param Queue empty"))
+                        except Exception as e:
+                            print("Error detected with chain: {}".format(index+1))
+                        if params is not None:
+                             all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
 
-                for index in range(0,self.num_chains):
-                    params = None
-                    try:
-                        queue = self.surrogate_parameter_queues[index]
-                        if queue.empty() is False:
-                            params = queue.get()
-                        else:
-                            raise(Exception("Surrogate Param Queue empty"))
-                    except Exception as e:
-                        print("Error detected with chain: {}".format(index+1))
-                    if params is not None:
-                         all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
-
-                if ('all_param' in locals()):
-                    #if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
-                    if all_param.shape[1] == (self.num_param+1):
-                        self.surrogate_trainer(all_param)
-                        del  all_param
+                    if ('all_param' in locals()):
+                        #if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
+                        if all_param.shape[1] == (self.num_param+1):
+                            self.surrogate_trainer(all_param)
+                            surrogate_trained = True
+                            del  all_param
                 for index in range(self.num_chains):
+                    # self.surrogate_trained[index].put(surrogate_trained)
                     self.resume_chain_events[index].set()
             elif signal_count == 0:
                 break
@@ -1190,12 +1153,15 @@ class ParallelTempering:
         #JOIN THEM TO MAIN PROCESS
         for j in range(0,self.num_chains):
             self.chains[j].join()
-        self.chain_queue.join()
+
         for i in range(0,self.num_chains):
             self.parameter_queue[i].close()
             self.parameter_queue[i].join_thread()
             self.surrogate_parameter_queues[i].close()
             self.surrogate_parameter_queues[i].join_thread()
+            # self.surrogate_trained[i].close()
+            # self.surrogate_trained[i].join_thread()
+
 
         # time.sleep(5)
 
