@@ -362,7 +362,7 @@ class ptReplica(multiprocessing.Process):
 
         self.save_surrogate_data =  save_surrogate_data
 
-        self.compare_surrogate  = True
+        self.compare_surrogate  = False
         self.sgd_depth = 1 # always should be 1
         self.learn_rate =   learn_rate # learn rate for langevin
 
@@ -727,8 +727,8 @@ class ptReplica(multiprocessing.Process):
                     try:
                         result =  self.parameter_queue.get()
                         w= result[0:w.size]
-                        eta = result[w.size]
-                        likelihood = result[w.size+1]/self.adapttemp
+                        #eta = result[w.size]
+                        #likelihood = result[w.size+1]/self.adapttemp
                     except:
                         print ('error')
                 else:
@@ -1551,7 +1551,7 @@ def main():
 
     foldername = sys.argv[5]
 
-    problemfolder = '/home/arpit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+    problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 
