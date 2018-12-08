@@ -656,11 +656,11 @@ class ptReplica(multiprocessing.Process):
                 if num_events%5==0 and num_events!=0:
                     self.surrogate_parameter_queue.put(surr_train_set)
                     surrogate_interval = True
-                    self.replica_conn.send(surrogate_interval)
                 else:
                     param = np.concatenate([w, np.asarray([eta]).reshape(1), np.asarray([likelihood*self.adapttemp]),np.asarray([self.adapttemp]),np.asarray([i])])
                     self.parameter_queue.put(param)
-                    self.replica_conn.send(surrogate_interval)
+                # Send the status of surrogate flag to master
+                self.replica_conn.send(surrogate_interval)
                 # Pause the chain execution and signal main process
                 self.pause_chain_event.set()
                 print("Temperature: {} waiting for swap and surrogate training complete signal. Event: {}".format(self.temperature, self.pause_chain_event.is_set()))
@@ -745,10 +745,15 @@ class ptReplica(multiprocessing.Process):
 
         file_name = self.path + '/posterior/accept_list/chain_' + str(self.temperature) + '.txt'
         np.savetxt(file_name, accept_list, fmt='%1.4f')
-        print("Temperature {} chain dead!".format(self.temperature))
+        print("Temperature {} chain dead!".format(self.temperature)),
         self.pause_chain_event.set()
         self.replica_conn.send(False)
+        while not self.parameter_queue.empty():
+            self.parameter_queue.get()
+        while not self.surrogate_parameter_queue.empty():
+            self.surrogate_parameter_queue.get()     
         print("Parameter Queue Empty: {}; Surrogate Queue Empty: {}".format(self.parameter_queue.empty(), self.surrogate_parameter_queue.empty()))
+        
         return
 
 class ParallelTempering:
