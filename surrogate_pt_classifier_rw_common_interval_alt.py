@@ -1522,7 +1522,7 @@ def main():
 
     foldername = sys.argv[5]
 
-    problemfolder = '/home/arpit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+    problemfolder = '/home/arpitkapoor/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 
