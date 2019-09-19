@@ -27,11 +27,11 @@ from matplotlib.collections import PatchCollection
 from scipy.stats import multivariate_normal
 from scipy.stats import norm
 #import GPy
-import sklearn
+'''import sklearn
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.preprocessing import normalize
+from sklearn.preprocessing import normalize'''
 import pickle
 #np.random.seed(1)
 
@@ -1506,6 +1506,9 @@ def main():
 	problem = int(sys.argv[1])  # get input
 
 	Samples = int(sys.argv[2]) 
+ 
+
+
 
 	surrogate_prob = float(sys.argv[3])
 
@@ -1661,7 +1664,11 @@ def main():
 
 
 	maxtemp = 4 
-	num_chains = 10
+	#num_chains = 10
+
+
+
+
 	swap_interval = 100000  #  #how ofen you swap neighbours
 	burn_in = 0.6
 	surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
@@ -1675,6 +1682,9 @@ def main():
 	problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
 
 	problemfolder_db = foldername  # save main results
+
+
+	num_chains = sys.argv[6] 
 
 
 
