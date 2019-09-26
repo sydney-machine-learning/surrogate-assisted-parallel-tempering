@@ -35,6 +35,9 @@ from keras.callbacks import EarlyStopping
 from keras.models import model_from_json
 from keras.models import load_model
 
+
+from datetime import datetime
+
 import sys
 import time
 
@@ -1384,7 +1387,7 @@ class ParallelTempering:
 def main():
 
 
-    if(len(sys.argv)!=6):
+    if(len(sys.argv)!=7):
         sys.exit('not right input format. give problem num [1 - 8] ')
 
 
@@ -1539,17 +1542,19 @@ def main():
 
 
     maxtemp = 4
-    num_chains = 10
     swap_interval = 100  #  #how ofen you swap neighbours
     burn_in = 0.2
-    surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
-    print("Surrogate interval: {}".format(surrogate_interval))
 
     #surrogate_prob = 0.5
     use_surrogate = True # if you set this to false, you get canonical PT - also make surrogate prob 0
 
 
     foldername = sys.argv[5]
+
+    num_chains =  int(sys.argv[6])
+
+    surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
+    print("Surrogate interval: {}".format(surrogate_interval))
 
     problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
@@ -1599,6 +1604,10 @@ def main():
     timer = time.time()
     #path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
 
+    start=datetime.now()
+
+#Statements
+
 
     pt = ParallelTempering(use_surrogate,  use_langevin_gradients, learn_rate,  save_surrogate_data, traindata, testdata, topology, num_chains, maxtemp, NumSample, swap_interval, surrogate_interval, surrogate_prob, path, path_db, surrogate_topology)
 
@@ -1618,12 +1627,19 @@ def main():
 
     timer2 = time.time()
 
+
+
+    time_span =  datetime.now()-start
+
     timetotal = (timer2 - timer) /60
+    print (time_span.seconds, ' is time total ')
+
+    span = time_span.seconds
 
 
     x_index = np.where(acc_train==np.inf)
     acc_train = np.delete(acc_train, x_index, axis = 0)
-    print (acc_train)
+     
     acc_tr = np.mean(acc_train [:])
     acctr_std = np.std(acc_train[:])
     acctr_max = np.amax(acc_train[:])
@@ -1688,8 +1704,8 @@ def main():
 
     xv = name+'_'+ str(run_nb)
 
-    print (  acc_tr, acctr_max, acc_tes, acctes_max)
-    allres =  np.asarray([ problem, NumSample, maxtemp, swap_interval, surrogate_intervalratio, surrogate_prob,  use_langevin_gradients, learn_rate, acc_tr, acctr_std, acctr_max, acc_tes, acctest_std, acctes_max, swap_perc, accept, rmse_surr,  timetotal])
+    #print (  acc_tr, acctr_max, acc_tes, acctes_max)
+    allres =  np.asarray([ problem, NumSample, maxtemp, swap_interval, surrogate_intervalratio, surrogate_prob,  use_langevin_gradients, learn_rate, acc_tr, acctr_std, acctr_max, acc_tes, acctest_std, acctes_max, swap_perc, accept, rmse_surr,  timetotal,  span ])
 
     np.savetxt(outres_db,  allres   , fmt='%1.2f', newline=' '  )
     np.savetxt(resultingfile_db,   allres   , fmt='%1.2f',  newline=' ' )

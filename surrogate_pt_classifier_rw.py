@@ -1432,7 +1432,7 @@ class ParallelTempering:
 def main():
 
 
-	if(len(sys.argv)!=6):
+	if(len(sys.argv)!=7):
 		sys.exit('not right input format. give problem num [1 - 8] ')
 
 
@@ -1585,9 +1585,11 @@ def main():
 
 	NumSample = Samples
 
+	foldername = sys.argv[5]
+
 
 	maxtemp = 4
-	num_chains = 10
+	num_chains = int(sys.argv[6])
 	swap_interval = 100000  #  #how ofen you swap neighbours
 	burn_in = 0.6
 	surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
@@ -1597,7 +1599,7 @@ def main():
 	use_surrogate = True # if you set this to false, you get canonical PT - also make surrogate prob 0
 
 
-	foldername = sys.argv[5]
+	
 
 	problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
 	#problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets

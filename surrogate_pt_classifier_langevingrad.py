@@ -1498,7 +1498,7 @@ class ParallelTempering:
 def main():
 
 
-	if(len(sys.argv)!=6):
+	if(len(sys.argv)!=7):
 		sys.exit('not right input format. give problem num [1 - 8] ')
 
  
@@ -1671,7 +1671,6 @@ def main():
 
 	swap_interval = 100000  #  #how ofen you swap neighbours
 	burn_in = 0.6
-	surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
 
 	#surrogate_prob = 0.5 
 	use_surrogate = True # if you set this to false, you get canonical PT - also make surrogate prob 0
@@ -1684,7 +1683,9 @@ def main():
 	problemfolder_db = foldername  # save main results
 
 
-	num_chains = sys.argv[6] 
+	num_chains = int(sys.argv[6])
+	
+	surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
 
 
 
@@ -1723,7 +1724,7 @@ def main():
 
 	learn_rate = 0.01
 
-	pt_samples = int(0.6 * NumSample/num_chains)   # this is for PT first stage. then sampling becomes MCMC canonical later
+	pt_samples = int(0.9 * NumSample/num_chains)   # this is for PT first stage. then sampling becomes MCMC canonical later
 
 	timer = time.time()
 	#path = "SydneyResults/"+name+"_results_"+str(NumSample)+"_"+str(maxtemp)+"_"+str(num_chains)+"_"+str(swap_ratio)+"_"+str(surrogate_interval)+"_"+str(surrogate_prob)
