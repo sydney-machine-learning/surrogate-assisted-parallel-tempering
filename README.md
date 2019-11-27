@@ -26,7 +26,7 @@ you   need to install  Tensorflow and scikitlearn for surrogate training.
 
 ## Running the tests
 
-Data for the experiments are given: [data](https://github.com/sydney-machine-learning/surrogate-assisted-parallel-tempering/tree/master/DATA)
+Datasets for the experiments are given: [data](https://github.com/sydney-machine-learning/surrogate-assisted-parallel-tempering/tree/master/DATA)
 
 ###  Experiments 
 
