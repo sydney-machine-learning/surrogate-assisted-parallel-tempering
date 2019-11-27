@@ -16,8 +16,8 @@ paper online: [Surrogate-assisted parallel tempering for Bayesian neural learnin
 
 The framework is built using: 
 
-* [Paralel tempering neural networks with paralel processing ] (https://github.com/sydney-machine-learning/parallel-tempering-neural-net)
-* [Neurocomputing paper by R. Chandra et. al] (https://www.sciencedirect.com/science/article/pii/S0925231219308069) with  [Arxiv open access](https://arxiv.org/abs/1811.04343)
+* [Paralel tempering neural networks with paralel processing ](https://github.com/sydney-machine-learning/parallel-tempering-neural-net)
+* [Neurocomputing paper by R. Chandra et. al](https://www.sciencedirect.com/science/article/pii/S0925231219308069) with  [Arxiv open access](https://arxiv.org/abs/1811.04343)
 
 ### Installing
 
