@@ -46,8 +46,12 @@ Example results and sh script for running experiment is given here: [sample expe
 
 ## License
 
-* This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+* This project is licensed under the MIT License - see the [Open Source Licence](https://opensource.org/licenses/MIT) file for details
 
 ## Acknowledgments
 
 * R. Dietmar Muller and Danial Azam, University of Sydney
+
+## Contact
+
+* Dr. Rohitash Chandra, University of New South Wales (c.rohitash at gmail.com or rohitash.chandra at unsw.edu.au)
