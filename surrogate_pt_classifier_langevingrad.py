@@ -448,7 +448,7 @@ class ptReplica(multiprocessing.Process):
 		rmse_test = np.zeros(samples)
 		acc_train = np.zeros(samples)
 		acc_test = np.zeros(samples)
-		learn_rate = 0.5
+		 
 
 		naccept = 0
 		#Random Initialisation of weights
@@ -459,7 +459,7 @@ class ptReplica(multiprocessing.Process):
 		#Randomwalk Steps
 		step_w = 0.025
 		#Declare FNN
-		fnn = Network(self.topology, self.traindata, self.testdata, learn_rate)
+		fnn = Network(self.topology, self.traindata, self.testdata, self.learn_rate)
 		#Evaluate Proposals
 		pred_train, prob_train = fnn.evaluate_proposal(self.traindata,w) #	
 		pred_test, prob_test = fnn.evaluate_proposal(self.testdata, w) #
@@ -1722,7 +1722,7 @@ def main():
 
 	use_langevin_gradients = True
 
-	learn_rate = 0.01
+	learn_rate = 0.5
 
 	pt_samples = int(0.9 * NumSample/num_chains)   # this is for PT first stage. then sampling becomes MCMC canonical later
 
