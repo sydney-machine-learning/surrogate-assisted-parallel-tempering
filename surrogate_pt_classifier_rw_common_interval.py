@@ -139,7 +139,7 @@ class Network:
         Desired = np.zeros((1, self.Top[2]))
         fx = np.zeros(size)
 
-        for i in range(0, depth):
+        for j in range(0, depth):
             for i in range(0, size):
                 pat = i
                 Input = data[pat, 0:self.Top[0]]
@@ -649,7 +649,7 @@ class ptReplica(multiprocessing.Process):
 
                     lhood_counter = lhood_counter + 1
 
-                    print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
+                    # print (i, self.adapttemp, lhood_counter ,   likelihood ,  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, 'accepted')
 
 
 
@@ -671,7 +671,7 @@ class ptReplica(multiprocessing.Process):
                     lhood_counter_inf = lhood_counter_inf + 1
 
                     ## print (i,lhood_counter ,   likelihood, self.adapttemp,   acc_train[i+1,], acc_test[i+1,],  'accepted sur')
-                    print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
+                    # print (i,lhood_counter ,   likelihood,   mh_prob, math.exp(diff_likelihood  + diff_prior),  diff_likelihood ,  diff_prior, acc_train[i+1,], acc_test[i+1,], self.adapttemp, '  not accepted')
 
 
             else:
@@ -690,7 +690,7 @@ class ptReplica(multiprocessing.Process):
                     reject_counter = reject_counter + 1
 
 
-                    print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
+                    # print (i,lhood_counter ,   likelihood,   acc_train[lhood_counter,], acc_test[lhood_counter,],  self.adapttemp, 'rejected  true-lhood ')
 
                 else:
                     lhood_list[i+1,] = np.inf
@@ -709,7 +709,7 @@ class ptReplica(multiprocessing.Process):
                     reject_counter_inf = reject_counter_inf + 1
 
 
-                    print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
+                    # print (i,lhood_counter ,   likelihood, self.adapttemp, rmsetrain, rmsetest, acc_train[i+1,], acc_test[i+1,],  'accepted surr ')
 
 
             #SWAPPING PREP
@@ -722,20 +722,13 @@ class ptReplica(multiprocessing.Process):
                 # Pause the chain execution and signal main process
                 self.pause_chain_event.set()
                 print("Temperature: {} waiting for swap and surrogate training complete signal. Event: {}".format(self.temperature, self.pause_chain_event.is_set()))
-                # Wait for the main process to complete the swap and surrogate training
-                self.resume_chain_event.wait()
                 self.resume_chain_event.clear()
+                self.resume_chain_event.wait()
                 # retrieve parameters fom queues if it has been swapped
-                if not self.parameter_queue.empty() :
-                    try:
-                        result =  self.parameter_queue.get()
-                        w= result[0:w.size]
-                        #eta = result[w.size]
-                        #likelihood = result[w.size+1]/self.adapttemp
-                    except:
-                        print ('error')
-                else:
-                    print("The parameter queue is empty!")
+                result =  self.parameter_queue.get()
+                w= result[0:w.size]
+                #eta = result[w.size]
+                #likelihood = result[w.size+1]/self.adapttemp
 
                 model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
                 self.model_signature = model_sign
@@ -966,36 +959,34 @@ class ParallelTempering:
             self.chains.append(ptReplica(self.use_surrogate,  self.use_langevin_gradients, self.learn_rate, self.save_surrogate_data, w,  self.minlim_param, self.maxlim_param, self.NumSamples, self.traindata, self.testdata, self.topology, self.burn_in, self.temperatures[i], self.swap_interval, self.path, self.parameter_queue[i], self.pause_chain_events[i], self.resume_chain_events[i], self.surrogate_parameter_queues[i], self.surrogate_interval, self.surrogate_prob, self.surrogate_start_events[i], self.surrogate_resume_events[i], self.surrogate_topology))
 
     def swap_procedure(self, parameter_queue_1, parameter_queue_2):
-        if parameter_queue_2.empty() is False and parameter_queue_1.empty() is False:
-            swapped = False
-            param1 = parameter_queue_1.get()
-            param2 = parameter_queue_2.get()
-            w1 = param1[0:self.num_param]
-            eta1 = param1[self.num_param]
-            lhood1 = param1[self.num_param+1]
-            T1 = param1[self.num_param+2]
-            w2 = param2[0:self.num_param]
-            eta2 = param2[self.num_param]
-            lhood2 = param2[self.num_param+1]
-            T2 = param2[self.num_param+2]
-            #SWAPPING PROBABILITIES
-            try:
-                swap_proposal =  min(1,0.5*np.exp(min(709, lhood2 - lhood1)))
-            except OverflowError:
-                swap_proposal = 1
-            u = np.random.uniform(0,1)
-            if u < swap_proposal:
-                self.num_swap += 1
-                param_temp =  param1
-                param1 = param2
-                param2 = param_temp
-                swapped = True
-            self.total_swap_proposals += 1
-            print("swapped: {} {}".format(param1[:2], param2[:2]))
-            return param1, param2, swapped
+        swapped = False
+        param1 = parameter_queue_1.get()
+        param2 = parameter_queue_2.get()
+        w1 = param1[0:self.num_param]
+        eta1 = param1[self.num_param]
+        lhood1 = param1[self.num_param+1]
+        T1 = param1[self.num_param+2]
+        w2 = param2[0:self.num_param]
+        eta2 = param2[self.num_param]
+        lhood2 = param2[self.num_param+1]
+        T2 = param2[self.num_param+2]
+        #SWAPPING PROBABILITIES
+        try:
+            swap_proposal =  min(1,0.5*np.exp(min(709, lhood2 - lhood1)))
+        except OverflowError:
+            swap_proposal = 1
+        u = np.random.uniform(0,1)
+        if u < swap_proposal:
+            self.num_swap += 1
+            param_temp =  param1
+            param1 = param2
+            param2 = param_temp
+            swapped = True
         else:
-            self.total_swap_proposals += 1
-            return
+            swapped = False
+        self.total_swap_proposals += 1
+        print("swapped: {} {}".format(param1[:2], param2[:2]))
+        return param1, param2, swapped
 
     def surrogate_trainer(self,params):
         #X = params[:,:self.num_param]
@@ -1120,12 +1111,15 @@ class ParallelTempering:
             self.chains[l].start_chain = start
             self.chains[l].end = end
         for j in range(0,self.num_chains):
+            self.pause_chain_events[j].clear()
+            self.resume_chain_events[j].clear()
             self.chains[j].start()
         swaps_appected_main = 0
         total_swaps_main = 0
 
         #SWAP PROCEDURE
-        while True:
+        for i in range(int(self.NumSamples/self.swap_interval)):
+        # while True:
             # Check if individual processes are still alive
             count = 0
             for index in range(self.num_chains):
@@ -1145,37 +1139,28 @@ class ParallelTempering:
                 flag = self.pause_chain_events[index].wait()
                 if flag:
                     print("Signal from chain: {}".format(index+1))
-                    self.pause_chain_events[index].clear()
+                    # self.pause_chain_events[index].clear()
                     signal_count += 1
-
+            print(signal_count,' is the signal count')
             # If signal not recieved from all chains skip the swap
             if signal_count == self.num_chains:
                 # Start swapping procedure
                 for index in range(0,self.num_chains-1):
                     print('starting swap')
-                    try:
-                        param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],self.parameter_queue[index+1])
-                        self.parameter_queue[index].put(param_1)
-                        self.parameter_queue[index+1].put(param_2)
-                        if index == 0:
-                            if swapped:
-                                swaps_appected_main += 1
-                            total_swaps_main += 1
-                    except Exception as e:
-                        print("Nothing Returned by swap method!")
+                    param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],self.parameter_queue[index+1])
+                    self.parameter_queue[index].put(param_1)
+                    self.parameter_queue[index+1].put(param_2)
+                    if index == 0:
+                        if swapped:
+                            swaps_appected_main += 1
+                        total_swaps_main += 1
 
                 for index in range(0,self.num_chains):
                     params = None
-                    try:
-                        queue = self.surrogate_parameter_queues[index]
-                        if queue.empty() is False:
-                            params = queue.get()
-                        else:
-                            raise(Exception("Surrogate Param Queue empty"))
-                    except Exception as e:
-                        print("Error detected with chain: {}".format(index+1))
+                    queue = self.surrogate_parameter_queues[index]
+                    params = queue.get()
                     if params is not None:
-                         all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
+                        all_param = np.asarray(params if not ('all_param' in locals()) else np.concatenate([all_param,params],axis=0))
 
                 if ('all_param' in locals()):
                     #if all_param.shape == (self.num_chains*(self.surrogate_interval-1),self.num_param+1):
@@ -1183,7 +1168,9 @@ class ParallelTempering:
                         self.surrogate_trainer(all_param)
                         del  all_param
                 for index in range(self.num_chains):
+                    self.pause_chain_events[index].clear()
                     self.resume_chain_events[index].set()
+
             elif signal_count == 0:
                 break
             else:
