@@ -1,5 +1,7 @@
 """ Feed Forward Network with Parallel Tempering for Multi-Core Systems"""
 
+#'''  some hyper parameters have been modified by ashray. search for 'ashray' and see those changes to revert back to original'''
+
 from __future__ import print_function, division
 import multiprocessing
 import os
@@ -17,7 +19,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 plt.rcParams['xtick.labelsize'] = 12
 plt.rcParams['ytick.labelsize'] = 12
-
+import nn_mcmc_plots as mcmcplt
 params = {'legend.fontsize': 10,
           'legend.handlelength': 2}
 plt.rcParams.update(params)
@@ -41,6 +43,8 @@ from datetime import datetime
 import sys
 import time
 
+
+mplt = mcmcplt.Mcmcplot()
 
 class Network:
 
@@ -365,7 +369,7 @@ class ptReplica(multiprocessing.Process):
 
         self.save_surrogate_data =  save_surrogate_data
 
-        self.compare_surrogate  = False
+        self.compare_surrogate  = True
         self.sgd_depth = 1 # always should be 1
         self.learn_rate =   learn_rate # learn rate for langevin
 
@@ -1147,6 +1151,7 @@ class ParallelTempering:
                 # Start swapping procedure
                 for index in range(0,self.num_chains-1):
                     print('starting swap')
+                    print(i,int(self.NumSamples/self.swap_interval))
                     param_1, param_2, swapped = self.swap_procedure(self.parameter_queue[index],self.parameter_queue[index+1])
                     self.parameter_queue[index].put(param_1)
                     self.parameter_queue[index+1].put(param_2)
@@ -1522,6 +1527,7 @@ def main():
     netw = topology
 
 
+
     y_test =  testdata[:,netw[0]]
     y_train =  traindata[:,netw[0]]
 
@@ -1529,11 +1535,11 @@ def main():
 
 
     maxtemp = 4
-    swap_interval = 100  #  #how ofen you swap neighbours
+    swap_interval = 5  #  #how ofen you swap neighbours
     burn_in = 0.2
 
     #surrogate_prob = 0.5
-    use_surrogate = True # if you set this to false, you get canonical PT - also make surrogate prob 0
+    use_surrogate = False # if you set this to false, you get canonical PT - also make surrogate prob 0
 
 
     foldername = sys.argv[5]
@@ -1541,9 +1547,11 @@ def main():
     num_chains =  int(sys.argv[6])
 
     surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
+    ''' changed by ashray'''
+    surrogate_interval = 100
     print("Surrogate interval: {}".format(surrogate_interval))
 
-    problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+    problemfolder = 'SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 
@@ -1611,6 +1619,14 @@ def main():
     (pos_w, fx_train, fx_test,  rmse_train, rmse_test, acc_train, acc_test, accept_list, swap_perc,  likelihood_rep, rmse_surr, surr_list, accept  ) = pt.run_chains()
 
 
+    # for plotting of weights posterior
+    '''
+    to plots the histograms of weight destribution
+    '''
+    mplt.initialiseweights(len(pos_w),len(pos_w[0]))
+    for i in range(len(pos_w)):
+        mplt.addweightdata(i,pos_w[i])
+    mplt.saveplots()
 
     timer2 = time.time()
 
