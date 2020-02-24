@@ -15,6 +15,7 @@ mpl.use('agg')
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import nn_mcmc_plots as mcmcplt
 plt.rcParams['xtick.labelsize'] = 12
 plt.rcParams['ytick.labelsize'] = 12
 
@@ -40,6 +41,7 @@ from datetime import datetime
 
 import sys
 import time
+mplt = mcmcplt.Mcmcplot()
 
 
 class Network:
@@ -1622,6 +1624,13 @@ def main():
 
     #pos_w, fx_train, fx_test,   rmse_train, rmse_test, accept_total,  likelihood_rep
     (pos_w, fx_train, fx_test,  rmse_train, rmse_test, acc_train, acc_test, accept_list, swap_perc,  likelihood_rep, rmse_surr, surr_list, accept  ) = pt.run_chains()
+    '''
+    to plots the histograms of weight destribution
+    '''
+    mplt.initialiseweights(len(pos_w),len(pos_w[0]))
+    for i in range(len(pos_w)):
+        mplt.addweightdata(i,pos_w[i])
+    mplt.saveplots()
 
 
 
