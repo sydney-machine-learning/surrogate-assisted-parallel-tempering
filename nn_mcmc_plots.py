@@ -19,7 +19,7 @@ class Mcmcplot:
         n_bins = 30
         tempw = self.wdata.transpose()
         for i,item in enumerate(tempw):
-            plt.hist(item,bins=n_bins)
+            plt.hist(item)
             if os.path.exists('mcmcplots') is False:
                 os.makedirs('mcmcplots')
             name = 'mcmcplots/W'+str(i)+'.png'

@@ -367,7 +367,7 @@ class ptReplica(multiprocessing.Process):
 
         self.save_surrogate_data =  save_surrogate_data
 
-        self.compare_surrogate  = False
+        self.compare_surrogate  = True
         self.sgd_depth = 1 # always should be 1
         self.learn_rate =   learn_rate # learn rate for langevin
 
@@ -728,16 +728,16 @@ class ptReplica(multiprocessing.Process):
                 self.resume_chain_event.wait()
                 self.resume_chain_event.clear()
                 # retrieve parameters fom queues if it has been swapped
-                if not self.parameter_queue.empty() :
-                    try:
-                        result =  self.parameter_queue.get()
-                        w= result[0:w.size]
-                        #eta = result[w.size]
-                        #likelihood = result[w.size+1]/self.adapttemp
-                    except:
-                        print ('error')
-                else:
-                    print("The parameter queue is empty!")
+                # if not self.parameter_queue.empty() :
+                #     try:
+                #         result =  self.parameter_queue.get()
+                #         w= result[0:w.size]
+                #         #eta = result[w.size]
+                #         #likelihood = result[w.size+1]/self.adapttemp
+                #     except:
+                #         print ('error')
+                # else:
+                #     print("The parameter queue is empty!")
 
                 model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
                 self.model_signature = model_sign
@@ -1558,7 +1558,7 @@ def main():
     surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
     print("Surrogate interval: {}".format(surrogate_interval))
 
-    problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+    problemfolder = 'SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 
@@ -1627,11 +1627,14 @@ def main():
     '''
     to plots the histograms of weight destribution
     '''
+    print(pos_w.shape,' shape of pos_w')
+    pos_w = np.transpose(pos_w)
     mplt.initialiseweights(len(pos_w),len(pos_w[0]))
     for i in range(len(pos_w)):
         mplt.addweightdata(i,pos_w[i])
     mplt.saveplots()
-
+    pos_w = np.transpose(pos_w)
+    
 
 
     timer2 = time.time()
