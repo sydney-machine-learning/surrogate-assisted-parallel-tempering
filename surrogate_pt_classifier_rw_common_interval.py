@@ -1382,6 +1382,8 @@ class ParallelTempering:
 
         return posterior, fx_train_all, fx_test_all,   rmse_train, rmse_test,  acc_train, acc_test,  likelihood_vec.T, accept_list,  rmse_surr, surr_list, accept
 
+
+
     def make_directory (self, directory):
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -1635,6 +1637,12 @@ def main():
     mplt.saveplots()
     pos_w = np.transpose(pos_w)
     
+
+
+
+    #for s in range(self.num_param): 
+    for s in range(30): # change this if you want to see all pos plots
+        pt.plot_figure(pos_w[s,:], 'pos_distri_'+str(s) ) 
 
 
     timer2 = time.time()
