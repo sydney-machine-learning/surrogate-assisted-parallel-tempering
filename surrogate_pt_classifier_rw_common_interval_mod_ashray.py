@@ -630,10 +630,12 @@ class ptReplica(multiprocessing.Process):
                 # Wait for the main process to complete the swap and surrogate training
                 self.resume_chain_event.clear()
                 self.resume_chain_event.wait()
-                # retrieve parameters fom queues if it has been swapped
+                #uncomment the below lines to perform swap - ashray
+                '''
                 result =  self.parameter_queue.get()
-                w= result[0:w.size]
-                #eta = result[w.size]
+                w = result[0:w.size]
+                '''
+                # eta = result[w.size]
                 #likelihood = result[w.size+1]/self.adapttemp
 
                 model_sign = np.loadtxt(self.path+'/surrogate/model_signature.txt')
