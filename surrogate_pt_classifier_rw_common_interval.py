@@ -256,10 +256,10 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
                         #self.krnn = self.create_model()
                         break
                     except EnvironmentError as e:
-                        pass
+                        # pass
                         # # print(e.errno)
                         # time.sleep(1)
-                        # # print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
+                        print ('ERROR in loading latest surrogate model, loading previous one in TRAIN')
 
             early_stopping = EarlyStopping(monitor='val_loss', patience=5)
             self.krnn.compile(loss='mse', optimizer='adam', metrics=['mse'])
@@ -309,7 +309,8 @@ class surrogate: #General Class for surrogate models for predicting likelihood g
                         # # print (' Tried to load file : ', self.path+'/model_krnn_%s_.h5'%self.model_signature)
                         break
                     except EnvironmentError as e:
-                        pass
+                        print(e)
+                        # pass
 
                 self.krnn.compile(loss='mse', optimizer='rmsprop', metrics=['mse'])
                 krnn_prediction =-1.0
