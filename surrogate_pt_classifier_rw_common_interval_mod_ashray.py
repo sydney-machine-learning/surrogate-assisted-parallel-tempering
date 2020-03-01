@@ -631,8 +631,10 @@ class ptReplica(multiprocessing.Process):
                 self.resume_chain_event.clear()
                 self.resume_chain_event.wait()
                 # retrieve parameters fom queues if it has been swapped
+                ''' comment below 2 lines to stop swap 
                 result =  self.parameter_queue.get()
                 w= result[0:w.size]
+                '''
                 #eta = result[w.size]
                 #likelihood = result[w.size+1]/self.adapttemp
 
@@ -947,61 +949,62 @@ class ParallelTempering:
 
         return Y
 
-    # def plot_figure(self, list, title):
+    def plot_figure(self, lista, title,folder):
 
-    #     list_points =  list
+        list_points =  lista
+        fname = folder
+        size = 20
+        self.make_directory(fname + '/pos_plots')
+        fname = fname + '/pos_plots'
+        fname = self.path
+        width = 9
 
-    #     fname = self.path
-    #     width = 9
+        font = 12
 
-    #     font = 9
-
-    #     fig = plt.figure(figsize=(10, 12))
-    #     ax = fig.add_subplot(111)
-
-
-    #     slen = np.arange(0,len(list),1)
-
-    #     fig = plt.figure(figsize=(10,12))
-    #     ax = fig.add_subplot(111)
-    #     ax.spines['top'].set_color('none')
-    #     ax.spines['bottom'].set_color('none')
-    #     ax.spines['left'].set_color('none')
-    #     ax.spines['right'].set_color('none')
-    #     ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
-    #     ax.set_title(' Posterior distribution', fontsize=  font+2)#, y=1.02)
-
-    #     ax1 = fig.add_subplot(211)
-
-    #     n, rainbins, patches = ax1.hist(list_points,  bins = 20,  alpha=0.5, facecolor='sandybrown', normed=False)
+        fig = plt.figure(figsize=(10, 12))
+        ax = fig.add_subplot(111)
 
 
-    #     color = ['blue','red', 'pink', 'green', 'purple', 'cyan', 'orange','olive', 'brown', 'black']
+        slen = np.arange(0,len(list_points),1)
 
-    #     ax1.grid(True)
-    #     ax1.set_ylabel('Frequency',size= font+1)
-    #     ax1.set_xlabel('Parameter values', size= font+1)
+        fig = plt.figure(figsize=(10,12))
+        ax = fig.add_subplot(111)
+        ax.spines['top'].set_color('none')
+        ax.spines['bottom'].set_color('none')
+        ax.spines['left'].set_color('none')
+        ax.spines['right'].set_color('none')
+        ax.tick_params(labelcolor='w', top='off', bottom='off', left='off', right='off')
+        ax.set_title(' Posterior distribution', fontsize=  font+2)#, y=1.02)
 
-    #     ax2 = fig.add_subplot(212)
+        ax1 = fig.add_subplot(211)
 
-    #     list_points = np.asarray(np.split(list_points,  self.num_chains ))
-
-
-
-
-    #     ax2.set_facecolor('#f2f2f3')
-    #     ax2.plot( list_points.T , label=None)
-    #     ax2.set_title(r'Trace plot',size= font+2)
-    #     ax2.set_xlabel('Samples',size= font+1)
-    #     ax2.set_ylabel('Parameter values', size= font+1)
-
-    #     fig.tight_layout()
-    #     fig.subplots_adjust(top=0.88)
+        n, rainbins, patches = ax1.hist(list_points,  bins = 20,  alpha=0.5, facecolor='sandybrown', normed=False)
 
 
-    #     plt.savefig(fname + '/' + title  + '_pos_.png', bbox_inches='tight', dpi=300, transparent=False)
-    #     plt.clf()
+        color = ['blue','red', 'pink', 'green', 'purple', 'cyan', 'orange','olive', 'brown', 'black']
 
+        ax1.grid(True)
+        ax1.set_ylabel('Frequency',size= font+1)
+        ax1.set_xlabel('Parameter values', size= font+1)
+
+        ax2 = fig.add_subplot(212)
+
+        list_points = np.asarray(np.split(list_points,  self.num_chains ))
+
+        ax2.set_facecolor('#f2f2f3')
+        ax2.plot( list_points.T , label=None)
+        ax2.set_title(r'Trace plot',size= font+2)
+        ax2.set_xlabel('Samples',size= font+1)
+        ax2.set_ylabel('Parameter values', size= font+1)
+
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.88)
+
+
+        plt.savefig(fname + '/' + title  + '_pos_.png', bbox_inches='tight', dpi=300, transparent=False)
+        plt.clf()
+
+    '''
     def plot_figure(self, list, title,folder): 
 
         list_points =  list
@@ -1036,7 +1039,7 @@ class ParallelTempering:
         plt.tight_layout()  
         plt.savefig(fname + '/pos_plots/' + title  + '_trace.pdf')
         plt.clf()
-
+    '''
 
     def run_chains(self):
         # only adjacent chains can be swapped therefore, the number of proposals is ONE less num_chains
