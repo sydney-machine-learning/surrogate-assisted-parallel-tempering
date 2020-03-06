@@ -1583,7 +1583,7 @@ def main():
 
 
     maxtemp = 4
-    swap_interval = 100  #  #how ofen you swap neighbours
+    swap_interval = 50  #  #how ofen you swap neighbours
     burn_in = 0.2
 
     #surrogate_prob = 0.5
@@ -1597,7 +1597,7 @@ def main():
     surrogate_interval = int(surrogate_intervalratio * (NumSample/num_chains))
     print("Surrogate interval: {}".format(surrogate_interval))
 
-    problemfolder = 'SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
+    problemfolder = '/home/rohit/Desktop/SurrogatePT/'+foldername  # change this to your directory for results output - produces large datasets
     #problemfolder = 'detailed_'+foldername  # change this to your directory for results output - produces large datasets
 
 

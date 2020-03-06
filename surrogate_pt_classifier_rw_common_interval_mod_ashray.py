@@ -1482,7 +1482,7 @@ def main():
 
 
     maxtemp = 4
-    swap_interval = 100  #  #how ofen you swap neighbours
+    swap_interval = 50  #  #how ofen you swap neighbours
     burn_in = 0.2
 
     #surrogate_prob = 0.5
