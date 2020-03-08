@@ -631,10 +631,10 @@ class ptReplica(multiprocessing.Process):
                 self.resume_chain_event.clear()
                 self.resume_chain_event.wait()
                 # retrieve parameters fom queues if it has been swapped
-                ''' comment below 2 lines to stop swap 
+                ''' comment below 2 lines to stop swap '''
                 result =  self.parameter_queue.get()
                 w= result[0:w.size]
-                '''
+                
                 #eta = result[w.size]
                 #likelihood = result[w.size+1]/self.adapttemp
 
@@ -1072,9 +1072,9 @@ class ParallelTempering:
                 if not self.chains[index].is_alive():
                     count+=1
                     self.pause_chain_events[index].set()
-                    print(str(self.chains[index].temperature) +" Dead")
-                else:
-                    print(str(self.chains[index].temperature) +" Alive")
+                    # print(str(self.chains[index].temperature) +" Dead")
+                # else:
+                #     print(str(self.chains[index].temperature) +" Alive")
             if count == self.num_chains:
                 break
             print("Waiting for swap signal.")
@@ -1327,7 +1327,6 @@ class ParallelTempering:
 
 def main():
 
-
     if(len(sys.argv)!=7):
         sys.exit('not right input format. give problem num [1 - 8] ')
 
@@ -1483,7 +1482,7 @@ def main():
 
 
     maxtemp = 4
-    swap_interval = 100  #  #how ofen you swap neighbours
+    swap_interval = 50  #  #how ofen you swap neighbours
     burn_in = 0.2
 
     #surrogate_prob = 0.5
@@ -1574,12 +1573,12 @@ def main():
     # mplt.saveplots()
     # pos_w = np.transpose(pos_w)
     
+    ''' to plot ax plots '''
 
-
-    print(pos_w.shape)
-    plot_fname = path
-    for s in range(30): # change this if you want to see all pos plots
-        pt.plot_figure(pos_w[s,:], 'pos_distri_'+str(s),plot_fname) 
+    # print(pos_w.shape)
+    # plot_fname = path
+    # for s in range(30): # change this if you want to see all pos plots
+    #     pt.plot_figure(pos_w[s,:], 'pos_distri_'+str(s),plot_fname) 
 
 
     timer2 = time.time()

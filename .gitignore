@@ -1,5 +1,7 @@
 RESULTS/*
 SydneyResults/* 
+SurrogatePT*
+num_replicas_rw*
 
 detailed*
 surrlangevingrad*
